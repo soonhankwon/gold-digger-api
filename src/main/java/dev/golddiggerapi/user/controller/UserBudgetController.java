@@ -6,6 +6,7 @@ import dev.golddiggerapi.user.service.UserBudgetService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -17,7 +18,7 @@ public class UserBudgetController {
 
     @PostMapping("/{categoryId}")
     public ResponseEntity<String> createUserBudget(@PathVariable Long categoryId,
-                                                   @RequestBody UserBudgetCreateRequest request) {
+                                                   @Validated @RequestBody UserBudgetCreateRequest request) {
         // SecurityContextHolder 에서 정보를 꺼내서 사용할 예정입니다.
         String mockAccountName = "abc";
         String res = userBudgetService.createUserBudget(mockAccountName, categoryId, request);
@@ -26,7 +27,7 @@ public class UserBudgetController {
 
     @PatchMapping("/{userBudgetId}")
     public ResponseEntity<String> updateUserBudget(@PathVariable Long userBudgetId,
-                                                   @RequestBody UserBudgetUpdateRequest request) {
+                                                   @Validated @RequestBody UserBudgetUpdateRequest request) {
         // SecurityContextHolder 에서 정보를 꺼내서 사용할 예정입니다.
         String mockAccountName = "abc";
         String res = userBudgetService.updateUserBudget(mockAccountName, userBudgetId, request);

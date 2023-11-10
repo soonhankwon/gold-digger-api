@@ -43,11 +43,10 @@ public class UserBudget {
     public void update(UserBudgetUpdateRequest request, ExpenditureCategory category) {
         this.amount = request.amount();
         this.updatedAt = LocalDateTime.now();
-        // Input 카테고리가 같다면 pass 합니다.
-        if(isInputCategorySameAsThisCategory(category)) {
-            return;
+        // Input 카테고리가 같지않다면 수정합니다.
+        if(!isInputCategorySameAsThisCategory(category)) {
+            this.expenditureCategory = category;
         }
-        this.expenditureCategory = category;
     }
 
     private boolean isInputCategorySameAsThisCategory(ExpenditureCategory category) {
