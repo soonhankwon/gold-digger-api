@@ -21,6 +21,7 @@ public class UserService {
         if(isExistsAccountName(request.accountName())) {
             throw new IllegalArgumentException("exist account name in db");
         }
+        //TODO 인코더 Bean 등록 후 사용
         Function<String, String> encodeFunction =
                 password -> new BCryptPasswordEncoder().encode(password);
         User user = new User(request, encodeFunction);
