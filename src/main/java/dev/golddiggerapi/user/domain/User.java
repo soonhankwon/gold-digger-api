@@ -1,7 +1,10 @@
 package dev.golddiggerapi.user.domain;
 
+import dev.golddiggerapi.user.controller.dto.UserSignupRequest;
 import jakarta.persistence.*;
 import lombok.NoArgsConstructor;
+
+import java.util.function.Function;
 
 @NoArgsConstructor
 @Entity
@@ -15,4 +18,9 @@ public class User {
     private String accountName;
 
     private String password;
+
+    public User(UserSignupRequest request, Function<String, String> encoderFunction) {
+        this.accountName = request.accountName();
+        this.password = encoderFunction.apply(request.password());
+    }
 }
