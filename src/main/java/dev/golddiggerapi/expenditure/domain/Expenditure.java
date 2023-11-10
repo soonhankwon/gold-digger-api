@@ -15,7 +15,7 @@ public class Expenditure {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Integer amount;
+    private Long amount;
 
     @Enumerated(EnumType.STRING)
     private ExpenditureStatus expenditureStatus;

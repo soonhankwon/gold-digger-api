@@ -1,9 +1,11 @@
 package dev.golddiggerapi.expenditure.domain;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
+@Getter
 @Entity
 @Table(name = "expenditure_category")
 public class ExpenditureCategory {

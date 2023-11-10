@@ -1,6 +1,8 @@
 package dev.golddiggerapi.user.domain;
 
 import dev.golddiggerapi.expenditure.domain.ExpenditureCategory;
+import dev.golddiggerapi.user.controller.dto.UserBudgetCreateRequest;
+import dev.golddiggerapi.user.controller.dto.UserBudgetUpdateRequest;
 import jakarta.persistence.*;
 import lombok.NoArgsConstructor;
 
@@ -15,6 +17,8 @@ public class UserBudget {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    private Long amount;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
@@ -26,4 +30,27 @@ public class UserBudget {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "expenditure_category_id")
     private ExpenditureCategory expenditureCategory;
+
+
+    public UserBudget(User user, ExpenditureCategory category, UserBudgetCreateRequest request) {
+        this.amount = request.amount();
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+        this.user = user;
+        this.expenditureCategory = category;
+    }
+
+    public void update(UserBudgetUpdateRequest request, ExpenditureCategory category) {
+        this.amount = request.amount();
+        this.updatedAt = LocalDateTime.now();
+        // Input 카테고리가 같다면 pass 합니다.
+        if(isInputCategorySameAsThisCategory(category)) {
+            return;
+        }
+        this.expenditureCategory = category;
+    }
+
+    private boolean isInputCategorySameAsThisCategory(ExpenditureCategory category) {
+        return this.expenditureCategory == category;
+    }
 }
