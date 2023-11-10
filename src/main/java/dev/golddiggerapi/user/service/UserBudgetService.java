@@ -52,6 +52,10 @@ public class UserBudgetService {
                 .orElseThrow(() -> new IllegalArgumentException("no category id in db"));
 
         userBudget.update(request, category);
+        // 예산 카테고리를 변경했는데 이미 해당 카테고리의 예산이 있다면 예외 처리
+        if (isExistsUserBudgetByCategory(user, category)) {
+            throw new IllegalArgumentException("duplicated category");
+        }
         return "updated";
     }
 }
