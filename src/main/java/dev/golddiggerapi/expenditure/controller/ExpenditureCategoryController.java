@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/expenditure/categories")
+@RequestMapping("/api/expenditures/categories")
 @RequiredArgsConstructor
 public class ExpenditureCategoryController {
 
