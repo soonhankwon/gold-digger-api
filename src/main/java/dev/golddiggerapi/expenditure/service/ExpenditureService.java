@@ -6,13 +6,18 @@ import dev.golddiggerapi.expenditure.domain.ExpenditureCategory;
 import dev.golddiggerapi.expenditure.repository.ExpenditureCategoryRepository;
 import dev.golddiggerapi.expenditure.repository.ExpenditureRepository;
 import dev.golddiggerapi.user.domain.User;
+import dev.golddiggerapi.user.domain.UserExpenditureCategory;
+import dev.golddiggerapi.user.repository.UserExpenditureCategoryRepository;
 import dev.golddiggerapi.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ExpenditureService {
@@ -20,6 +25,7 @@ public class ExpenditureService {
     private final ExpenditureRepository expenditureRepository;
     private final UserRepository userRepository;
     private final ExpenditureCategoryRepository expenditureCategoryRepository;
+    private final UserExpenditureCategoryRepository userExpenditureCategoryRepository;
 
     @Transactional
     public String createExpenditure(String accountName, Long categoryId, ExpenditureRequest request) {
@@ -31,6 +37,7 @@ public class ExpenditureService {
 
         Expenditure expenditure = new Expenditure(user, category, request);
         expenditureRepository.save(expenditure);
+        user.addExpenditureCategory(new UserExpenditureCategory(user, category, request.amount()));
         return "created";
     }
 
@@ -45,8 +52,29 @@ public class ExpenditureService {
         Expenditure expenditure = expenditureRepository.findById(expenditureId)
                 .orElseThrow(() -> new IllegalArgumentException("no expenditure in db"));
 
+        // 지출액 업데이트 전 지출액 차이 스냅샷
+        Long expenditureDifference = request.amount() - expenditure.getAmount();
+        // 기존 지출이 같은 카테고리로 업데이트 된 경우 - 기존 카테고리 지출액 총합 수정
+        if (isRequestCategoryIdSameAsExpenditureCategoryId(request, expenditure.getExpenditureCategory())) {
+            UserExpenditureCategory userExpenditureCategory = userExpenditureCategoryRepository.findUserExpenditureCategoryByUserAndExpenditureCategory(user, category)
+                    .orElseThrow(() -> new IllegalArgumentException("no expenditure category by user in db"));
+            userExpenditureCategory.updateAmount(expenditureDifference);
+        }
+        // 기존 지출이 다른 카테고리로 업데이트 된 경우 - 기존 카테고리 지출액 총합 수정 & 다른 카테고리 지출액 총합 수정
+        else {
+            Optional<UserExpenditureCategory> optionalUserExpenditureCategory =
+                    userExpenditureCategoryRepository.findUserExpenditureCategoryByUserAndExpenditureCategory_Id(user, expenditure.getExpenditureCategory().getId());
+            optionalUserExpenditureCategory.ifPresent(userExpenditureCategory
+                    -> userExpenditureCategory.decreaseAmount(expenditureDifference));
+            user.addExpenditureCategory(new UserExpenditureCategory(user, category, request.amount()));
+        }
+        // 지출액 업데이트
         expenditure.update(request, category);
         return "updated";
+    }
+
+    private boolean isRequestCategoryIdSameAsExpenditureCategoryId(ExpenditureUpdateRequest request, ExpenditureCategory category) {
+        return category.getId().equals(request.categoryId());
     }
 
     public ExpenditureResponse getExpenditure(String accountName, Long expenditureId) {
@@ -112,5 +140,13 @@ public class ExpenditureService {
 
         expenditure.exclude();
         return "excluded";
+    }
+    
+    public List<UserExpenditureAvgRatioByCategoryStatisticResponse> statisticExpenditureAvgRatioByCategory(String accountName) {
+        User user = userRepository.findUserByAccountName(accountName)
+                .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
+
+        List<UserExpenditureAvgRatioByCategoryStatisticResponse> res = expenditureRepository.statisticAvgRatioByCategory();
+        return res;
     }
 }
