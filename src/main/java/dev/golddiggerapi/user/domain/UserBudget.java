@@ -40,6 +40,14 @@ public class UserBudget {
         this.expenditureCategory = category;
     }
 
+    public UserBudget(User user, ExpenditureCategory category, Long amount) {
+        this.amount = amount;
+        this.user = user;
+        this.expenditureCategory = category;
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public void update(UserBudgetUpdateRequest request, ExpenditureCategory category) {
         this.amount = request.amount();
         this.updatedAt = LocalDateTime.now();

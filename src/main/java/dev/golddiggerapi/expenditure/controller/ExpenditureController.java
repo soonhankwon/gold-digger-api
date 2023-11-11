@@ -10,6 +10,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -69,6 +70,15 @@ public class ExpenditureController {
         // SecurityContextHolder 에서 정보를 꺼내서 사용할 예정입니다.
         String mockAccountName = "abc";
         String res = expenditureService.excludeExpenditure(mockAccountName, expenditureId);
+        return ResponseEntity.ok().body(res);
+    }
+
+    // 유저 카테고리별 지출 평균 비율 (유저 지출 비율 기준으로 통계)
+    @GetMapping("/avg-ratio")
+    public ResponseEntity<List<UserExpenditureAvgRatioByCategoryStatisticResponse>> statisticExpenditureAvgRatioByCategory() {
+        // SecurityContextHolder 에서 정보를 꺼내서 사용할 예정입니다.
+        String mockAccountName = "abc";
+        List<UserExpenditureAvgRatioByCategoryStatisticResponse> res = expenditureService.statisticExpenditureAvgRatioByCategory(mockAccountName);
         return ResponseEntity.ok().body(res);
     }
 }
