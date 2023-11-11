@@ -13,7 +13,7 @@ public record ExpenditureUpdateRequest(
         Long amount,
         @NotNull
         String memo,
-        @NotBlank
+        @NotNull
         Long categoryId
 ) {
 }
