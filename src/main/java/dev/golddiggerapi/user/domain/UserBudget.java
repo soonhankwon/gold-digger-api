@@ -6,7 +6,7 @@ import dev.golddiggerapi.user.controller.dto.UserBudgetUpdateRequest;
 import jakarta.persistence.*;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.*;
 
 @NoArgsConstructor
 @Entity
@@ -18,6 +18,8 @@ public class UserBudget {
     private Long id;
 
     private Long amount;
+
+    private LocalDateTime plannedMonth;
 
     private LocalDateTime createdAt;
 
@@ -34,6 +36,9 @@ public class UserBudget {
 
     public UserBudget(User user, ExpenditureCategory category, UserBudgetCreateRequest request) {
         this.amount = request.amount();
+        Integer year = request.year();
+        Month month = Month.of(request.month());
+        this.plannedMonth = YearMonth.of(year, month).atDay(1).atStartOfDay();
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
         this.user = user;
@@ -42,6 +47,7 @@ public class UserBudget {
 
     public UserBudget(User user, ExpenditureCategory category, Long amount) {
         this.amount = amount;
+        this.plannedMonth = YearMonth.now().atDay(1).atStartOfDay();
         this.user = user;
         this.expenditureCategory = category;
         this.createdAt = LocalDateTime.now();
@@ -52,7 +58,7 @@ public class UserBudget {
         this.amount = request.amount();
         this.updatedAt = LocalDateTime.now();
         // Input 카테고리가 같지않다면 수정합니다.
-        if(!isInputCategorySameAsThisCategory(category)) {
+        if (!isInputCategorySameAsThisCategory(category)) {
             this.expenditureCategory = category;
         }
     }
