@@ -73,6 +73,13 @@ public class ExpenditureController {
         return ResponseEntity.ok().body(res);
     }
 
+    @GetMapping("/today")
+    public ResponseEntity<ExpenditureByTodayResponse> getExpenditureByToday() {
+        String mockAccountName = "abc";
+        ExpenditureByTodayResponse res = expenditureService.getExpenditureByToday(mockAccountName);
+        return ResponseEntity.ok().body(res);
+    }
+
     // 유저 카테고리별 지출 평균 비율 (유저 지출 비율 기준으로 통계)
     @GetMapping("/avg-ratio")
     public ResponseEntity<List<UserExpenditureAvgRatioByCategoryStatisticResponse>> statisticExpenditureAvgRatioByCategory() {
