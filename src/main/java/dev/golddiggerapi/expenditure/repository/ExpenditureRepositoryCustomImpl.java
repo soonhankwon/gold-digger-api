@@ -11,6 +11,8 @@ import dev.golddiggerapi.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @Repository
@@ -38,6 +40,17 @@ public class ExpenditureRepositoryCustomImpl implements ExpenditureRepositoryCus
                 .from(expenditure)
                 .where(expenditure.user.eq(user)
                         .and(expenditure.expenditureDateTime.between(request.getStart(), request.getEnd().plusDays(1L)))
+                        .and(expenditure.expenditureStatus.eq(ExpenditureStatus.INCLUDED)))
+                .groupBy(expenditureCategory.id)
+                .fetch();
+    }
+
+    @Override
+    public List<ExpenditureCategoryAndAmountResponse> statisticExpenditureCategoryAndAmountByTodayByUser(User user) {
+        return queryFactory.select(new QExpenditureCategoryAndAmountResponse(expenditureCategory.id, expenditureCategory.name, expenditure.amount.sum()))
+                .from(expenditure)
+                .where(expenditure.user.eq(user)
+                        .and(expenditure.expenditureDateTime.between(LocalDate.now().atStartOfDay(), LocalDate.now().atTime(LocalTime.MAX)))
                         .and(expenditure.expenditureStatus.eq(ExpenditureStatus.INCLUDED)))
                 .groupBy(expenditureCategory.id)
                 .fetch();

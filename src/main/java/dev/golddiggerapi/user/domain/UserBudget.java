@@ -1,5 +1,6 @@
 package dev.golddiggerapi.user.domain;
 
+import dev.golddiggerapi.expenditure.controller.dto.ExpenditureAnalyze;
 import dev.golddiggerapi.expenditure.domain.ExpenditureCategory;
 import dev.golddiggerapi.user.controller.dto.UserBudgetCreateRequest;
 import dev.golddiggerapi.user.controller.dto.UserBudgetUpdateRequest;
@@ -70,5 +71,11 @@ public class UserBudget {
 
     private boolean isInputCategorySameAsThisCategory(ExpenditureCategory category) {
         return this.expenditureCategory == category;
+    }
+
+    public ExpenditureAnalyze analyzeReasonableExpenditureSumAndRisk(Long expenditureSum) {
+        Long reasonableExpenditureSum = this.amount / YearMonth.now().lengthOfMonth();
+        Long risk = (expenditureSum / reasonableExpenditureSum) * 100;
+        return new ExpenditureAnalyze(reasonableExpenditureSum, risk);
     }
 }

@@ -19,4 +19,6 @@ public interface ExpenditureRepositoryCustom {
     Long getExpendituresSumByUserAndCondition(User user, ExpenditureByUserRequest request);
 
     List<UserExpenditureAvgRatioByCategoryStatisticResponse> statisticAvgRatioByCategory();
+
+    List<ExpenditureCategoryAndAmountResponse> statisticExpenditureCategoryAndAmountByTodayByUser(User user);
 }
