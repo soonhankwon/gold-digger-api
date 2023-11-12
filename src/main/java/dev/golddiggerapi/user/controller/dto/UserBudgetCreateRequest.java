@@ -9,6 +9,7 @@ public record UserBudgetCreateRequest(
         @Min(value = 0)
         Long amount,
 
+        @Max(value = 2100)
         Integer year,
 
         @Min(1) @Max(12)
