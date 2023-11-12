@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -35,15 +36,13 @@ public class UserBudgetService {
                 .orElseThrow(() -> new IllegalArgumentException("no category id in db"));
 
         UserBudget userBudget = new UserBudget(user, category, request);
-        if (isExistsUserBudgetByCategory(user, category)) {
-            throw new IllegalArgumentException("duplicated category");
-        }
+        validateDuplicatedUserBudget(user, userBudget, category);
         userBudgetRepository.save(userBudget);
         return "created";
     }
 
-    private boolean isExistsUserBudgetByCategory(User user, ExpenditureCategory category) {
-        return userBudgetRepository.existsByUserAndExpenditureCategory(user, category);
+    private boolean isExistsUserBudgetByCategoryAndMonth(User user, ExpenditureCategory category, LocalDateTime plannedMonth) {
+        return userBudgetRepository.existsByUserAndExpenditureCategoryAndPlannedMonth(user, category, plannedMonth);
     }
 
     @Transactional
@@ -57,12 +56,17 @@ public class UserBudgetService {
         ExpenditureCategory category = expenditureCategoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> new IllegalArgumentException("no category id in db"));
 
+        // 유저 예산의 카테고리, 년, 월, 예산총액을 수정할 수 있다.
         userBudget.update(request, category);
-        // 예산 카테고리를 변경했는데 이미 해당 카테고리의 예산이 있다면 예외 처리
-        if (isExistsUserBudgetByCategory(user, category)) {
-            throw new IllegalArgumentException("duplicated category");
-        }
+        // 업데이트후 중복된 월 and 카테고리 유저 예산이 DB에 있다면 예외처리한다.
+        validateDuplicatedUserBudget(user, userBudget, category);
         return "updated";
+    }
+
+    private void validateDuplicatedUserBudget(User user, UserBudget userBudget, ExpenditureCategory category) {
+        if (isExistsUserBudgetByCategoryAndMonth(user, category, userBudget.getPlannedMonth())) {
+            throw new IllegalArgumentException("duplicated user budget category in month");
+        }
     }
 
     public List<UserBudgetRecommendation> getUserBudgetByRecommendation(String accountName, Long budget) {
