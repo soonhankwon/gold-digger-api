@@ -4,11 +4,13 @@ import dev.golddiggerapi.expenditure.domain.ExpenditureCategory;
 import dev.golddiggerapi.user.controller.dto.UserBudgetCreateRequest;
 import dev.golddiggerapi.user.controller.dto.UserBudgetUpdateRequest;
 import jakarta.persistence.*;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.*;
 
 @NoArgsConstructor
+@Getter
 @Entity
 @Table(name = "user_budget")
 public class UserBudget {
@@ -56,6 +58,9 @@ public class UserBudget {
 
     public void update(UserBudgetUpdateRequest request, ExpenditureCategory category) {
         this.amount = request.amount();
+        Integer year = request.year();
+        Month month = Month.of(request.month());
+        this.plannedMonth = YearMonth.of(year, month).atDay(1).atStartOfDay();
         this.updatedAt = LocalDateTime.now();
         // Input 카테고리가 같지않다면 수정합니다.
         if (!isInputCategorySameAsThisCategory(category)) {
