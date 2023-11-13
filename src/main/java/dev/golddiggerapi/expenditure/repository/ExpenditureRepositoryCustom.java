@@ -1,12 +1,10 @@
 package dev.golddiggerapi.expenditure.repository;
 
-import dev.golddiggerapi.expenditure.controller.dto.ExpenditureByUserRequest;
-import dev.golddiggerapi.expenditure.controller.dto.ExpenditureCategoryAndAmountResponse;
-import dev.golddiggerapi.expenditure.controller.dto.ExpenditureMemoAndAmountResponse;
-import dev.golddiggerapi.expenditure.controller.dto.ExpenditureMinAndMax;
-import dev.golddiggerapi.expenditure.controller.dto.UserExpenditureAvgRatioByCategoryStatisticResponse;
+import dev.golddiggerapi.expenditure.controller.dto.*;
+import dev.golddiggerapi.statistics.controller.dto.ConsumptionRateByCategoryStatistics;
 import dev.golddiggerapi.user.domain.User;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ExpenditureRepositoryCustom {
@@ -21,4 +19,8 @@ public interface ExpenditureRepositoryCustom {
     List<UserExpenditureAvgRatioByCategoryStatisticResponse> statisticAvgRatioByCategory();
 
     List<ExpenditureCategoryAndAmountResponse> statisticExpenditureCategoryAndAmountByTodayByUser(User user);
+
+    List<ConsumptionRateByCategoryStatistics> getExpenditureConsumptionRateByCategoryCompareToPreviousMonth();
+
+    Long sumAmountByExpenditureDateTimeBetween(LocalDateTime start, LocalDateTime end);
 }
