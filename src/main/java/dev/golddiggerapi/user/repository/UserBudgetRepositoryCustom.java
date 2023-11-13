@@ -10,4 +10,8 @@ public interface UserBudgetRepositoryCustom {
     List<UserBudgetAvgRatioByCategoryStatisticResponse> statisticUserBudgetAvgRatioByCategory();
 
     List<UserBudgetCategoryAndAvailableExpenditure> getAvailableUserBudgetByCategoryByToday(User user);
+
+    Long getUserBudgetConsumptionRateByUsers(User user);
+
+    Long getUserBudgetConsumptionRateByUser(User user);
 }
