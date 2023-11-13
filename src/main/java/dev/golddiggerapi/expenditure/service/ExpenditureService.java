@@ -1,10 +1,13 @@
 package dev.golddiggerapi.expenditure.service;
 
+import dev.golddiggerapi.budget_consulting.service.BudgetConsultingService;
 import dev.golddiggerapi.expenditure.controller.dto.*;
 import dev.golddiggerapi.expenditure.domain.Expenditure;
 import dev.golddiggerapi.expenditure.domain.ExpenditureCategory;
 import dev.golddiggerapi.expenditure.repository.ExpenditureCategoryRepository;
 import dev.golddiggerapi.expenditure.repository.ExpenditureRepository;
+import dev.golddiggerapi.user.controller.dto.UserBudgetCategoryAndAvailableExpenditure;
+import dev.golddiggerapi.user.controller.dto.UserBudgetCategoryAndAvailableExpenditureRecommendation;
 import dev.golddiggerapi.user.domain.User;
 import dev.golddiggerapi.user.domain.UserBudget;
 import dev.golddiggerapi.user.repository.UserBudgetRepository;
@@ -28,6 +31,7 @@ public class ExpenditureService {
     private final UserRepository userRepository;
     private final ExpenditureCategoryRepository expenditureCategoryRepository;
     private final UserBudgetRepository userBudgetRepository;
+    private final BudgetConsultingService budgetConsultingService;
 
     @Transactional
     public String createExpenditure(String accountName, Long categoryId, ExpenditureRequest request) {
@@ -121,6 +125,36 @@ public class ExpenditureService {
 
         expenditure.exclude();
         return "excluded";
+    }
+
+    public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByToday(String accountName) {
+        User user = userRepository.findUserByAccountName(accountName)
+                .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
+
+        // 이번달의 어제까지의 카테고리별 지출을 예산에 반영해야한다.
+        // 유저의 오늘 지출 가능한 금액 총액, 카테고리별 금액
+        List<UserBudgetCategoryAndAvailableExpenditure> availableUserBudgetByCategoryByToday = userBudgetRepository.getAvailableUserBudgetByCategoryByToday(user);
+
+        Long realAvailableExpenditure = availableUserBudgetByCategoryByToday.stream()
+                .mapToLong(UserBudgetCategoryAndAvailableExpenditure::availableExpenditure).sum();
+        // 예산 컨설팅 서비스에서 실제 예산 대비 지출액으로 구체적인 분석 담당
+        String message = budgetConsultingService.analyzeBudgetStatus(realAvailableExpenditure);
+
+        // 지속적인 소비 습관을 생성하기 위한 서비스이므로 예산을 초과하더라도 적정한 금액을 추천
+        List<UserBudgetCategoryAndAvailableExpenditureRecommendation> res =
+                availableUserBudgetByCategoryByToday.stream()
+                        .map(UserBudgetCategoryAndAvailableExpenditureRecommendation::toRecommendation)
+                        .toList();
+
+        Long availableTotalExpenditure = res.stream()
+                .mapToLong(UserBudgetCategoryAndAvailableExpenditureRecommendation::availableExpenditure)
+                .sum();
+
+        return new ExpenditureByTodayRecommendationResponse(
+                availableTotalExpenditure,
+                message,
+                res
+        );
     }
 
     public ExpenditureByTodayResponse getExpenditureByToday(String accountName) {
