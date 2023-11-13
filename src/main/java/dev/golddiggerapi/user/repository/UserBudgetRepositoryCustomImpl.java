@@ -73,4 +73,32 @@ public class UserBudgetRepositoryCustomImpl implements UserBudgetRepositoryCusto
                 .orderBy(expenditureCategory.id.asc())
                 .fetch();
     }
+
+    @Override
+    public Long getUserBudgetConsumptionRateByUsers(User user) {
+        Long result = queryFactory.select(expenditure.amount.sum().divide(
+                        JPAExpressions.select(userBudget.amount.sum())
+                                .from(userBudget)
+                                .where(userBudget.user.ne(user))
+                ).multiply(100))
+                .from(expenditure)
+                .where(expenditure.expenditureDateTime.between(YearMonth.now().atDay(1).atStartOfDay(), LocalDateTime.now())
+                        .and(expenditure.user.ne(user)))
+                .fetchFirst();
+        return result != null ? result : 1L;
+    }
+
+    @Override
+    public Long getUserBudgetConsumptionRateByUser(User user) {
+        Long result = queryFactory.select(expenditure.amount.sum().divide(
+                        JPAExpressions.select(userBudget.amount.sum())
+                                .from(userBudget)
+                                .where(userBudget.user.eq(user))
+                ).multiply(100))
+                .from(expenditure)
+                .where(expenditure.expenditureDateTime.between(YearMonth.now().atDay(1).atStartOfDay(), LocalDateTime.now())
+                        .and(expenditure.user.eq(user)))
+                .fetchFirst();
+        return result != null ? result : 1L;
+    }
 }
