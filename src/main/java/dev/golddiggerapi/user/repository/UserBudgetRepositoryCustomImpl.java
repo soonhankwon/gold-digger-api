@@ -2,13 +2,20 @@ package dev.golddiggerapi.user.repository;
 
 import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import dev.golddiggerapi.expenditure.domain.QExpenditure;
 import dev.golddiggerapi.expenditure.domain.QExpenditureCategory;
 import dev.golddiggerapi.user.controller.dto.QUserBudgetAvgRatioByCategoryStatisticResponse;
+import dev.golddiggerapi.user.controller.dto.QUserBudgetCategoryAndAvailableExpenditure;
 import dev.golddiggerapi.user.controller.dto.UserBudgetAvgRatioByCategoryStatisticResponse;
+import dev.golddiggerapi.user.controller.dto.UserBudgetCategoryAndAvailableExpenditure;
 import dev.golddiggerapi.user.domain.QUserBudget;
+import dev.golddiggerapi.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Repository
@@ -16,6 +23,7 @@ import java.util.List;
 public class UserBudgetRepositoryCustomImpl implements UserBudgetRepositoryCustom {
 
     QExpenditureCategory expenditureCategory = QExpenditureCategory.expenditureCategory;
+    QExpenditure expenditure = QExpenditure.expenditure;
     QUserBudget userBudget = QUserBudget.userBudget;
 
     private final JPAQueryFactory queryFactory;
@@ -23,12 +31,12 @@ public class UserBudgetRepositoryCustomImpl implements UserBudgetRepositoryCusto
     @Override
     public List<UserBudgetAvgRatioByCategoryStatisticResponse> statisticUserBudgetAvgRatioByCategory() {
         return queryFactory.select(
-                new QUserBudgetAvgRatioByCategoryStatisticResponse(expenditureCategory,
-                        userBudget.amount.sum().divide(
-                                JPAExpressions.select(userBudget.amount.sum())
-                                        .from(userBudget)
-                                        .where(userBudget.expenditureCategory.eq(expenditureCategory)))
-                                .doubleValue()))
+                        new QUserBudgetAvgRatioByCategoryStatisticResponse(expenditureCategory,
+                                userBudget.amount.sum().divide(
+                                                JPAExpressions.select(userBudget.amount.sum())
+                                                        .from(userBudget)
+                                                        .where(userBudget.expenditureCategory.eq(expenditureCategory)))
+                                        .doubleValue()))
                 .from(userBudget)
                 .join(userBudget.expenditureCategory).on(userBudget.expenditureCategory.eq(expenditureCategory))
                 .groupBy(expenditureCategory)
@@ -37,6 +45,32 @@ public class UserBudgetRepositoryCustomImpl implements UserBudgetRepositoryCusto
                                         .from(userBudget)
                                         .where(userBudget.expenditureCategory.eq(expenditureCategory)))
                         .doubleValue().gt(0.10))
+                .fetch();
+    }
+
+    @Override
+    public List<UserBudgetCategoryAndAvailableExpenditure> getAvailableUserBudgetByCategoryByToday(User user) {
+        LocalDateTime startOfMonth = YearMonth.now().atDay(1).atStartOfDay();
+        LocalDateTime yesterday = LocalDateTime.now().minusDays(1);
+        LocalDateTime endOfThisMonth = YearMonth.now().atEndOfMonth().atTime(23, 59, 59);
+
+        long totalDaysThisMonth = ChronoUnit.DAYS.between(startOfMonth, endOfThisMonth) + 1;
+        long daysPassed = ChronoUnit.DAYS.between(startOfMonth, yesterday) + 1;
+        long remainingDays = totalDaysThisMonth - daysPassed;
+
+        return queryFactory.select(new QUserBudgetCategoryAndAvailableExpenditure(expenditureCategory.id, expenditureCategory.name,
+                        (userBudget.amount.sum().subtract(
+                                JPAExpressions.select(expenditure.amount.sum())
+                                        .from(expenditure)
+                                        .where(expenditure.expenditureCategory.eq(expenditureCategory)
+                                                .and(expenditure.expenditureDateTime
+                                                        .between(startOfMonth, yesterday))))
+                        ).divide(remainingDays > 0 ? remainingDays : 1L)))
+                .from(userBudget)
+                .where(userBudget.user.eq(user)
+                        .and(userBudget.plannedMonth.eq(startOfMonth)))
+                .groupBy(expenditureCategory.id)
+                .orderBy(expenditureCategory.id.asc())
                 .fetch();
     }
 }

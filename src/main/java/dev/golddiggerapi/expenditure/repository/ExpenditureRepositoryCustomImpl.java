@@ -6,13 +6,13 @@ import dev.golddiggerapi.expenditure.controller.dto.*;
 import dev.golddiggerapi.expenditure.domain.ExpenditureStatus;
 import dev.golddiggerapi.expenditure.domain.QExpenditure;
 import dev.golddiggerapi.expenditure.domain.QExpenditureCategory;
-import dev.golddiggerapi.expenditure.controller.dto.UserExpenditureAvgRatioByCategoryStatisticResponse;
 import dev.golddiggerapi.user.domain.QUser;
-import dev.golddiggerapi.user.domain.QUserExpenditureCategory;
 import dev.golddiggerapi.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @Repository
@@ -23,7 +23,6 @@ public class ExpenditureRepositoryCustomImpl implements ExpenditureRepositoryCus
 
     QExpenditure expenditure = QExpenditure.expenditure;
     QExpenditureCategory expenditureCategory = QExpenditureCategory.expenditureCategory;
-    QUserExpenditureCategory userExpenditureCategory = QUserExpenditureCategory.userExpenditureCategory;
     QUser user = QUser.user;
 
     @Override
@@ -41,6 +40,17 @@ public class ExpenditureRepositoryCustomImpl implements ExpenditureRepositoryCus
                 .from(expenditure)
                 .where(expenditure.user.eq(user)
                         .and(expenditure.expenditureDateTime.between(request.getStart(), request.getEnd().plusDays(1L)))
+                        .and(expenditure.expenditureStatus.eq(ExpenditureStatus.INCLUDED)))
+                .groupBy(expenditureCategory.id)
+                .fetch();
+    }
+
+    @Override
+    public List<ExpenditureCategoryAndAmountResponse> statisticExpenditureCategoryAndAmountByTodayByUser(User user) {
+        return queryFactory.select(new QExpenditureCategoryAndAmountResponse(expenditureCategory.id, expenditureCategory.name, expenditure.amount.sum()))
+                .from(expenditure)
+                .where(expenditure.user.eq(user)
+                        .and(expenditure.expenditureDateTime.between(LocalDate.now().atStartOfDay(), LocalDate.now().atTime(LocalTime.MAX)))
                         .and(expenditure.expenditureStatus.eq(ExpenditureStatus.INCLUDED)))
                 .groupBy(expenditureCategory.id)
                 .fetch();
@@ -97,13 +107,13 @@ public class ExpenditureRepositoryCustomImpl implements ExpenditureRepositoryCus
     public List<UserExpenditureAvgRatioByCategoryStatisticResponse> statisticAvgRatioByCategory() {
         return queryFactory.select(
                         new QUserExpenditureAvgRatioByCategoryStatisticResponse(expenditureCategory.id, expenditureCategory.name,
-                                userExpenditureCategory.amount.sum().divide(
-                                        JPAExpressions.select(userExpenditureCategory.amount.sum())
-                                                .from(userExpenditureCategory)
-                                                .where(userExpenditureCategory.expenditureCategory.eq(expenditureCategory)))
+                                expenditure.amount.sum().divide(
+                                                JPAExpressions.select(expenditure.amount.sum())
+                                                        .from(expenditure)
+                                                        .where(expenditure.expenditureCategory.eq(expenditureCategory)))
                                         .doubleValue()))
-                .from(userExpenditureCategory)
-                .join(userExpenditureCategory.expenditureCategory).on(userExpenditureCategory.expenditureCategory.eq(expenditureCategory))
+                .from(expenditure)
+                .join(expenditure.expenditureCategory).on(expenditure.expenditureCategory.eq(expenditureCategory))
                 .groupBy(expenditureCategory.id, user.id)
                 .orderBy(expenditureCategory.id.desc())
                 .fetch();
