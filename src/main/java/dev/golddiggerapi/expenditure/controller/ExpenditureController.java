@@ -73,6 +73,15 @@ public class ExpenditureController {
         return ResponseEntity.ok().body(res);
     }
 
+    // 오늘 지출 추천
+    @GetMapping("/today/recommend")
+    public ResponseEntity<ExpenditureByTodayRecommendationResponse> getExpenditureRecommendationByToday() {
+        String mockAccountName = "abc";
+        ExpenditureByTodayRecommendationResponse res = expenditureService.getExpenditureRecommendationByToday(mockAccountName);
+        return ResponseEntity.ok().body(res);
+    }
+
+    // 오늘 지출 분석 및 안내
     @GetMapping("/today")
     public ResponseEntity<ExpenditureByTodayResponse> getExpenditureByToday() {
         String mockAccountName = "abc";
