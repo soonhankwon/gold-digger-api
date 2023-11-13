@@ -143,7 +143,13 @@ public class ExpenditureService {
         // 지속적인 소비 습관을 생성하기 위한 서비스이므로 예산을 초과하더라도 적정한 금액을 추천
         List<UserBudgetCategoryAndAvailableExpenditureRecommendation> res =
                 availableUserBudgetByCategoryByToday.stream()
-                        .map(UserBudgetCategoryAndAvailableExpenditureRecommendation::toRecommendation)
+                        .map(i -> {
+                            if(i.availableExpenditure() < 0) {
+                                Long minimumAvailableExpenditure = budgetConsultingService.getMinimumAvailableExpenditure(i);
+                                return UserBudgetCategoryAndAvailableExpenditureRecommendation.toMinimumRecommendation(i, minimumAvailableExpenditure);
+                            }
+                            return UserBudgetCategoryAndAvailableExpenditureRecommendation.toRecommendation(i);
+                        })
                         .toList();
 
         Long availableTotalExpenditure = res.stream()
