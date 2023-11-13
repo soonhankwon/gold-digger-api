@@ -6,13 +6,17 @@ import dev.golddiggerapi.expenditure.controller.dto.*;
 import dev.golddiggerapi.expenditure.domain.ExpenditureStatus;
 import dev.golddiggerapi.expenditure.domain.QExpenditure;
 import dev.golddiggerapi.expenditure.domain.QExpenditureCategory;
+import dev.golddiggerapi.statistics.controller.dto.ConsumptionRateByCategoryStatistics;
+import dev.golddiggerapi.statistics.controller.dto.QConsumptionRateByCategoryStatistics;
 import dev.golddiggerapi.user.domain.QUser;
 import dev.golddiggerapi.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.YearMonth;
 import java.util.List;
 
 @Repository
@@ -117,5 +121,37 @@ public class ExpenditureRepositoryCustomImpl implements ExpenditureRepositoryCus
                 .groupBy(expenditureCategory.id, user.id)
                 .orderBy(expenditureCategory.id.desc())
                 .fetch();
+    }
+
+    @Override
+    public List<ConsumptionRateByCategoryStatistics> getExpenditureConsumptionRateByCategoryCompareToPreviousMonth() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startOfLastMonth = YearMonth.now().minusMonths(1).atDay(1).atStartOfDay();
+        LocalDateTime endOfLastMonth = now.minusMonths(1);
+
+        LocalDateTime startOfThisMonth = YearMonth.now().atDay(1).atStartOfDay();
+
+        return queryFactory.select(new QConsumptionRateByCategoryStatistics(expenditureCategory.id, expenditureCategory.name,
+                        expenditure.amount.sum().divide(
+                                JPAExpressions.select(expenditure.amount.sum())
+                                        .from(expenditure)
+                                        .where(expenditureCategory.eq(expenditureCategory)
+                                                .and(expenditure.expenditureDateTime
+                                                        .between(startOfLastMonth, endOfLastMonth)))
+                        ).multiply(100)))
+                .from(expenditure)
+                .join(expenditure.expenditureCategory).on(expenditure.expenditureCategory.eq(expenditureCategory))
+                .where(expenditure.expenditureDateTime.between(startOfThisMonth, now))
+                .groupBy(expenditure.expenditureCategory)
+                .orderBy(expenditureCategory.id.asc())
+                .fetch();
+    }
+
+    @Override
+    public Long sumAmountByExpenditureDateTimeBetween(LocalDateTime start, LocalDateTime end) {
+        return queryFactory.select(expenditure.amount.sum())
+                .from(expenditure)
+                .where(expenditure.expenditureDateTime.between(start, end))
+                .fetchFirst();
     }
 }
