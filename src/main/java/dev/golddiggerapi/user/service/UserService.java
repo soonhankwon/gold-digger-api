@@ -4,7 +4,7 @@ import dev.golddiggerapi.user.controller.dto.UserSignupRequest;
 import dev.golddiggerapi.user.domain.User;
 import dev.golddiggerapi.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,21 +15,21 @@ import java.util.function.Function;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public String createUser(UserSignupRequest request) {
-        if(isExistsAccountName(request.accountName())) {
+        if(isExistsUsername(request.username())) {
             throw new IllegalArgumentException("exist account name in db");
         }
-        //TODO 인코더 Bean 등록 후 사용
-        Function<String, String> encodeFunction =
-                password -> new BCryptPasswordEncoder().encode(password);
+
+        Function<String, String> encodeFunction = passwordEncoder::encode;
         User user = new User(request, encodeFunction);
         userRepository.save(user);
         return "created";
     }
 
-    private boolean isExistsAccountName(String accountName) {
-        return userRepository.existsByAccountName(accountName);
+    private boolean isExistsUsername(String accountName) {
+        return userRepository.existsByUsername(accountName);
     }
 }
