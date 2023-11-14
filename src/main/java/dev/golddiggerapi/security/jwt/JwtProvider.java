@@ -44,7 +44,7 @@ public class JwtProvider {
                 .issuer("gold")
                 .subject(username)
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plus(3, ChronoUnit.HOURS)))
+                .expiration(Date.from(now.plus(72, ChronoUnit.HOURS)))
                 .signWith(getSecretKey())
                 .compact();
     }
