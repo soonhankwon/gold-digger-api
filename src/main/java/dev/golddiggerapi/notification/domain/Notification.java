@@ -36,7 +36,7 @@ public record Notification(
                 .append("\n")
                 .append("카테고리별 사용 가능 금액" + "\n");
 
-        response.userBudgetCategoryAndAmountStatistics()
+        response.userBudgetCategoryAndAvailableExpenditureRecommendations()
                 .forEach(i -> {
                     sb.append("카테고리=").append(i.name()).append("\n");
                     sb.append("지출가능금액=").append(i.availableExpenditure()).append("원").append("\n");

@@ -80,16 +80,16 @@ public class ExpenditureRepositoryCustomImpl implements ExpenditureRepositoryCus
     }
 
     @Override
-    public List<ExpenditureMemoAndAmountResponse> getExpendituresMemoAndAmountByCondition(User user, ExpenditureByUserRequest request) {
+    public List<ExpenditureDetailsResponse> getExpendituresMemoAndAmountByCondition(User user, ExpenditureByUserRequest request) {
         if (request.getCategoryId() != null) {
-            return queryFactory.select(new QExpenditureMemoAndAmountResponse(expenditureCategory.id, expenditure.memo, expenditure.amount))
+            return queryFactory.select(new QExpenditureDetailsResponse(expenditureCategory.id, expenditure.memo, expenditure.amount))
                     .from(expenditure)
                     .where(expenditure.user.eq(user)
                             .and(expenditureCategory.id.eq(request.getCategoryId()))
                             .and(expenditure.expenditureDateTime.between(request.getStart(), request.getEnd().plusDays(1L))))
                     .fetch();
         }
-        return queryFactory.select(new QExpenditureMemoAndAmountResponse(expenditureCategory.id, expenditure.memo, expenditure.amount))
+        return queryFactory.select(new QExpenditureDetailsResponse(expenditureCategory.id, expenditure.memo, expenditure.amount))
                 .from(expenditure)
                 .where(expenditure.user.eq(user)
                         .and(expenditure.expenditureDateTime.between(request.getStart(), request.getEnd().plusDays(1L))))

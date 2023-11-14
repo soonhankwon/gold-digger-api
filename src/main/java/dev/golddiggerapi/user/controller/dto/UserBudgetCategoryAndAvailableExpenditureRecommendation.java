@@ -1,8 +1,17 @@
 package dev.golddiggerapi.user.controller.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(description = "유저 예산 카테고리별 지출가능 금액 추천 DTO")
 public record UserBudgetCategoryAndAvailableExpenditureRecommendation(
+
+        @Schema(description = "카테고리 ID", example = "1")
         Long categoryId,
+
+        @Schema(description = "카테고리 이름", example = "식비")
         String name,
+
+        @Schema(description = "지출가능 금액", example = "20000")
         Long availableExpenditure
 ) {
     public UserBudgetCategoryAndAvailableExpenditureRecommendation(Long categoryId, String name, Long availableExpenditure) {

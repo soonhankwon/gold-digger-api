@@ -10,7 +10,7 @@ import java.util.List;
 public interface ExpenditureRepositoryCustom {
     List<ExpenditureCategoryAndAmountResponse> statisticExpenditureCategoryAndAmount(User user, ExpenditureByUserRequest request);
 
-    List<ExpenditureMemoAndAmountResponse> getExpendituresMemoAndAmountByCondition(User user, ExpenditureByUserRequest request);
+    List<ExpenditureDetailsResponse> getExpendituresMemoAndAmountByCondition(User user, ExpenditureByUserRequest request);
 
     ExpenditureMinAndMax getExpenditureMinAndMaxByUser(User user, ExpenditureByUserRequest request);
 
