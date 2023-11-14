@@ -34,8 +34,8 @@ public class ExpenditureService {
     private final BudgetConsultingService budgetConsultingService;
 
     @Transactional
-    public String createExpenditure(String accountName, Long categoryId, ExpenditureRequest request) {
-        User user = userRepository.findUserByAccountName(accountName)
+    public String createExpenditure(String username, Long categoryId, ExpenditureRequest request) {
+        User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
 
         ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
@@ -47,33 +47,33 @@ public class ExpenditureService {
     }
 
     @Transactional
-    public String updateExpenditure(String accountName, Long expenditureId, ExpenditureUpdateRequest request) {
-        User user = userRepository.findUserByAccountName(accountName)
+    public String updateExpenditure(String username, Long expenditureId, ExpenditureUpdateRequest request) {
+        User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
 
         ExpenditureCategory category = expenditureCategoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> new IllegalArgumentException("no category id in db"));
 
-        Expenditure expenditure = expenditureRepository.findById(expenditureId)
-                .orElseThrow(() -> new IllegalArgumentException("no expenditure in db"));
+        Expenditure expenditure = expenditureRepository.findExpenditureByIdAndUser(expenditureId, user)
+                .orElseThrow(() -> new IllegalArgumentException("no expenditure id by user"));
 
         // 지출액 업데이트
         expenditure.update(request, category);
         return "updated";
     }
 
-    public ExpenditureResponse getExpenditure(String accountName, Long expenditureId) {
-        User user = userRepository.findUserByAccountName(accountName)
+    public ExpenditureResponse getExpenditure(String username, Long expenditureId) {
+        User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
 
-        Expenditure expenditure = expenditureRepository.findById(expenditureId)
-                .orElseThrow(() -> new IllegalArgumentException("no expenditure in db"));
+        Expenditure expenditure = expenditureRepository.findExpenditureByIdAndUser(expenditureId, user)
+                .orElseThrow(() -> new IllegalArgumentException("no expenditure id by user"));
 
         return ExpenditureResponse.toResponse(expenditure);
     }
 
-    public ExpenditureByUserResponse getExpendituresByUser(String accountName, ExpenditureByUserRequest request) {
-        User user = userRepository.findUserByAccountName(accountName)
+    public ExpenditureByUserResponse getExpendituresByUser(String username, ExpenditureByUserRequest request) {
+        User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
         // 카테고리 ID가 없을 경우 : 전체 카테고리 목록 조회
         List<ExpenditureCategoryAndAmountResponse> response = expenditureRepository.statisticExpenditureCategoryAndAmount(user, request);
@@ -104,8 +104,8 @@ public class ExpenditureService {
     }
 
     @Transactional
-    public String deleteExpenditure(String accountName, Long expenditureId) {
-        User user = userRepository.findUserByAccountName(accountName)
+    public String deleteExpenditure(String username, Long expenditureId) {
+        User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
 
         Expenditure expenditure = expenditureRepository.findExpenditureByIdAndUser(expenditureId, user)
@@ -116,8 +116,8 @@ public class ExpenditureService {
     }
 
     @Transactional
-    public String excludeExpenditure(String accountName, Long expenditureId) {
-        User user = userRepository.findUserByAccountName(accountName)
+    public String excludeExpenditure(String username, Long expenditureId) {
+        User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
 
         Expenditure expenditure = expenditureRepository.findExpenditureByIdAndUser(expenditureId, user)
@@ -127,8 +127,8 @@ public class ExpenditureService {
         return "excluded";
     }
 
-    public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByToday(String accountName) {
-        User user = userRepository.findUserByAccountName(accountName)
+    public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByToday(String username) {
+        User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
 
         // 이번달의 어제까지의 카테고리별 지출을 예산에 반영해야한다.
@@ -163,8 +163,8 @@ public class ExpenditureService {
         );
     }
 
-    public ExpenditureByTodayResponse getExpenditureByToday(String accountName) {
-        User user = userRepository.findUserByAccountName(accountName)
+    public ExpenditureByTodayResponse getExpenditureByToday(String username) {
+        User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
         // 유저의 카테고리별 오늘 지출 통계 결과를 가져온다.
         List<ExpenditureCategoryAndAmountResponse> expenditureCategoryAndAmountResponses = expenditureRepository.statisticExpenditureCategoryAndAmountByTodayByUser(user);
@@ -205,11 +205,7 @@ public class ExpenditureService {
                 expenditureByTodayByCategoryStatisticsResponses);
     }
 
-    public List<UserExpenditureAvgRatioByCategoryStatisticResponse> statisticExpenditureAvgRatioByCategory(String accountName) {
-        User user = userRepository.findUserByAccountName(accountName)
-                .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
-
-        List<UserExpenditureAvgRatioByCategoryStatisticResponse> res = expenditureRepository.statisticAvgRatioByCategory();
-        return res;
+    public List<UserExpenditureAvgRatioByCategoryStatisticResponse> statisticExpenditureAvgRatioByCategory() {
+        return expenditureRepository.statisticAvgRatioByCategory();
     }
 }
