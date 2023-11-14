@@ -89,4 +89,11 @@ public class ExpenditureController {
         List<UserExpenditureAvgRatioByCategoryStatisticResponse> res = expenditureService.statisticExpenditureAvgRatioByCategory();
         return ResponseEntity.ok().body(res);
     }
+
+    @GetMapping("/test/web-hook")
+    public ResponseEntity<String> testWebHook() {
+        expenditureService.sendExpenditureRecommendationByToday();
+        expenditureService.sendExpenditureByToday();
+        return ResponseEntity.ok().body("send webhook");
+    }
 }
