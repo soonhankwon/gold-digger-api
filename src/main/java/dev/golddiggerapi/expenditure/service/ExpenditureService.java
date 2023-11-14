@@ -83,7 +83,7 @@ public class ExpenditureService {
         // 카테고리 ID가 없을 경우 : 전체 카테고리 목록 조회
         List<ExpenditureCategoryAndAmountResponse> response = expenditureRepository.statisticExpenditureCategoryAndAmount(user, request);
         // 각 지출 메모와 액수를 조회한다.
-        List<ExpenditureMemoAndAmountResponse> memoAndAmount = expenditureRepository.getExpendituresMemoAndAmountByCondition(user, request);
+        List<ExpenditureDetailsResponse> memoAndAmount = expenditureRepository.getExpendituresMemoAndAmountByCondition(user, request);
         if (!hasCategoryId(request)) {
             Long sum = expenditureRepository.getExpendituresSumByUserAndCondition(user, request);
             if (hasRequestMinAndMax(request)) {
