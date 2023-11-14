@@ -28,8 +28,8 @@ public class UserBudgetService {
     private final UserRepository userRepository;
 
     @Transactional
-    public String createUserBudget(String accountName, Long categoryId, UserBudgetCreateRequest request) {
-        User user = userRepository.findUserByAccountName(accountName)
+    public String createUserBudget(String username, Long categoryId, UserBudgetCreateRequest request) {
+        User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
 
         ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
@@ -46,8 +46,8 @@ public class UserBudgetService {
     }
 
     @Transactional
-    public String updateUserBudget(String accountName, Long userBudgetId, UserBudgetUpdateRequest request) {
-        User user = userRepository.findUserByAccountName(accountName)
+    public String updateUserBudget(String username, Long userBudgetId, UserBudgetUpdateRequest request) {
+        User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
 
         UserBudget userBudget = userBudgetRepository.findById(userBudgetId)
@@ -69,8 +69,8 @@ public class UserBudgetService {
         }
     }
 
-    public List<UserBudgetRecommendation> getUserBudgetByRecommendation(String accountName, Long budget) {
-        User user = userRepository.findUserByAccountName(accountName)
+    public List<UserBudgetRecommendation> getUserBudgetByRecommendation(String username, Long budget) {
+        User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
 
         List<UserBudgetAvgRatioByCategoryStatisticResponse> statisticResponses =
@@ -94,8 +94,8 @@ public class UserBudgetService {
     }
 
     @Transactional
-    public String createUserBudgetByRecommendation(String accountName, List<UserBudgetRecommendation> request) {
-        User user = userRepository.findUserByAccountName(accountName)
+    public String createUserBudgetByRecommendation(String username, List<UserBudgetRecommendation> request) {
+        User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
 
         request.forEach(i -> {
