@@ -21,8 +21,11 @@ public class User {
 
     private String password;
 
+    private Boolean subscribeNotification;
+
     public User(UserSignupRequest request, Function<String, String> encoderFunction) {
         this.username = request.username();
         this.password = encoderFunction.apply(request.password());
+        this.subscribeNotification = request.subscribeNotification();
     }
 }

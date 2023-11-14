@@ -6,6 +6,8 @@ public record UserSignupRequest(
         @NotBlank
         String username,
         @NotBlank
-        String password
+        String password,
+        @NotBlank
+        Boolean subscribeNotification
 ) {
 }
