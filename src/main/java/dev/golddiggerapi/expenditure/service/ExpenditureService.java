@@ -6,6 +6,8 @@ import dev.golddiggerapi.expenditure.domain.Expenditure;
 import dev.golddiggerapi.expenditure.domain.ExpenditureCategory;
 import dev.golddiggerapi.expenditure.repository.ExpenditureCategoryRepository;
 import dev.golddiggerapi.expenditure.repository.ExpenditureRepository;
+import dev.golddiggerapi.notification.event.ExpenditureAnalyzeEvent;
+import dev.golddiggerapi.notification.event.ExpenditureRecommendationEvent;
 import dev.golddiggerapi.user.controller.dto.UserBudgetCategoryAndAvailableExpenditure;
 import dev.golddiggerapi.user.controller.dto.UserBudgetCategoryAndAvailableExpenditureRecommendation;
 import dev.golddiggerapi.user.domain.User;
@@ -14,6 +16,8 @@ import dev.golddiggerapi.user.repository.UserBudgetRepository;
 import dev.golddiggerapi.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,6 +36,7 @@ public class ExpenditureService {
     private final ExpenditureCategoryRepository expenditureCategoryRepository;
     private final UserBudgetRepository userBudgetRepository;
     private final BudgetConsultingService budgetConsultingService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional
     public String createExpenditure(String username, Long categoryId, ExpenditureRequest request) {
@@ -127,6 +132,15 @@ public class ExpenditureService {
         return "excluded";
     }
 
+    @Scheduled(cron = "0 0 8 * * *")
+    public void sendExpenditureRecommendationByToday() {
+        List<User> usersBySubscribeNotification = userRepository.findAllBySubscribeNotification(Boolean.TRUE);
+        usersBySubscribeNotification.forEach(i -> {
+            ExpenditureByTodayRecommendationResponse expenditureRecommendationByToday = getExpenditureRecommendationByToday(i.getUsername());
+            applicationEventPublisher.publishEvent(new ExpenditureRecommendationEvent(expenditureRecommendationByToday));
+        });
+    }
+
     public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByToday(String username) {
         User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
@@ -144,7 +158,7 @@ public class ExpenditureService {
         List<UserBudgetCategoryAndAvailableExpenditureRecommendation> res =
                 availableUserBudgetByCategoryByToday.stream()
                         .map(i -> {
-                            if(i.availableExpenditure() < 0) {
+                            if (i.availableExpenditure() < 0) {
                                 Long minimumAvailableExpenditure = budgetConsultingService.getMinimumAvailableExpenditure(i);
                                 return UserBudgetCategoryAndAvailableExpenditureRecommendation.toMinimumRecommendation(i, minimumAvailableExpenditure);
                             }
@@ -161,6 +175,15 @@ public class ExpenditureService {
                 message,
                 res
         );
+    }
+
+    @Scheduled(cron = "0 0 20 * * *")
+    public void sendExpenditureByToday() {
+        List<User> usersBySubscribeNotification = userRepository.findAllBySubscribeNotification(Boolean.TRUE);
+        usersBySubscribeNotification.forEach(i -> {
+            ExpenditureByTodayResponse expenditureByToday = getExpenditureByToday(i.getUsername());
+            applicationEventPublisher.publishEvent(new ExpenditureAnalyzeEvent(expenditureByToday));
+        });
     }
 
     public ExpenditureByTodayResponse getExpenditureByToday(String username) {

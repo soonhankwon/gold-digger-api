@@ -28,6 +28,7 @@ public class SecurityConfig {
         return http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/users/signup").permitAll()
+                        .requestMatchers("/reissue").permitAll()
                         .anyRequest().authenticated()
                 )
                 .headers(header -> header
