@@ -5,6 +5,9 @@ import dev.golddiggerapi.user.controller.dto.UserBudgetCreateRequest;
 import dev.golddiggerapi.user.controller.dto.UserBudgetRecommendation;
 import dev.golddiggerapi.user.controller.dto.UserBudgetUpdateRequest;
 import dev.golddiggerapi.user.service.UserBudgetService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,20 +18,24 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/budget")
 @RequiredArgsConstructor
+@RequestMapping("/api/budget")
+@Tag(name = "유저예산 API")
 public class UserBudgetController {
 
     private final UserBudgetService userBudgetService;
 
-    @PostMapping("/{categoryId}")
+    @Operation(summary = "유저예산 설정 API")
+    @PostMapping
     public ResponseEntity<String> createUserBudget(@AuthenticationPrincipal UserPrincipal userPrincipal,
-                                                   @PathVariable Long categoryId,
+                                                   @Parameter(description = "설정예산의 카테고리 ID", required = true)
+                                                   @RequestParam(value = "categoryId") Long categoryId,
                                                    @Validated @RequestBody UserBudgetCreateRequest request) {
         String res = userBudgetService.createUserBudget(userPrincipal.getUsername(), categoryId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
+    @Operation(summary = "유저예산 수정 API")
     @PatchMapping("/{userBudgetId}")
     public ResponseEntity<String> updateUserBudget(@AuthenticationPrincipal UserPrincipal userPrincipal,
                                                    @PathVariable Long userBudgetId,
@@ -37,18 +44,19 @@ public class UserBudgetController {
         return ResponseEntity.ok().body(res);
     }
 
-    // 추천 예산을 조회합니다.
+    @Operation(summary = "유저예산 추천 조회 API")
     @GetMapping("/{budget}/recommend")
     public ResponseEntity<List<UserBudgetRecommendation>> getUserBudgetByRecommendation(@AuthenticationPrincipal UserPrincipal userPrincipal,
+                                                                                        @Parameter(description = "예산 입력값", required = true)
                                                                                         @PathVariable Long budget) {
         List<UserBudgetRecommendation> res = userBudgetService.getUserBudgetByRecommendation(userPrincipal.getUsername(), budget);
         return ResponseEntity.ok().body(res);
     }
 
-    // 조회한 추천 예산으로 예산 설정.
-    @PostMapping("/v1/recommend")
-    public ResponseEntity<?> createUserBudgetByRecommendation(@AuthenticationPrincipal UserPrincipal userPrincipal,
-                                                              @RequestBody List<UserBudgetRecommendation> request) {
+    @Operation(summary = "조회한 추천 예산으로 예산 설정 API")
+    @PostMapping("/recommend")
+    public ResponseEntity<String> createUserBudgetByRecommendation(@AuthenticationPrincipal UserPrincipal userPrincipal,
+                                                                   @RequestBody List<UserBudgetRecommendation> request) {
         String res = userBudgetService.createUserBudgetByRecommendation(userPrincipal.getUsername(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
