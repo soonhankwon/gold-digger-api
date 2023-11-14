@@ -29,7 +29,7 @@ public class UserService {
         return "created";
     }
 
-    private boolean isExistsUsername(String accountName) {
-        return userRepository.existsByUsername(accountName);
+    private boolean isExistsUsername(String username) {
+        return userRepository.existsByUsername(username);
     }
 }
