@@ -5,11 +5,10 @@ public record UserBudgetCategoryAndAvailableExpenditureRecommendation(
         String name,
         Long availableExpenditure
 ) {
-
     public UserBudgetCategoryAndAvailableExpenditureRecommendation(Long categoryId, String name, Long availableExpenditure) {
         this.categoryId = categoryId;
         this.name = name;
-        if(availableExpenditure < 0) {
+        if (availableExpenditure < 0) {
             throw new IllegalArgumentException("minimum expenditure is 0");
         }
         this.availableExpenditure = Math.round(availableExpenditure / 100.0) * 100;
