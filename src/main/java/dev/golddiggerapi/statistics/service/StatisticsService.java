@@ -27,8 +27,8 @@ public class StatisticsService {
     private final ExpenditureRepository expenditureRepository;
     private final UserBudgetRepository userBudgetRepository;
 
-    public ExpenditureStatisticsResponse getExpenditureStatistics(String accountName) {
-        User user = userRepository.findUserByAccountName(accountName)
+    public ExpenditureStatisticsResponse getExpenditureStatistics(String username) {
+        User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
 
         LocalDateTime now = LocalDateTime.now();
