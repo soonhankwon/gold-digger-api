@@ -22,13 +22,14 @@ public class SecurityConfig {
     private final CustomStatusLogoutSuccessHandler customStatusLogoutSuccessHandler;
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.apply(jwtFilterDsl);
 
         return http
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/users/signup").permitAll()
-                        .requestMatchers("/reissue").permitAll()
+                        .requestMatchers("/api/auth/reissue").permitAll()
+                        .requestMatchers("/v3/**", "/swagger-ui/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .headers(header -> header
