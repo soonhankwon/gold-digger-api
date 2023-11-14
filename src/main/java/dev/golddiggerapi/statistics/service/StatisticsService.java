@@ -1,5 +1,6 @@
 package dev.golddiggerapi.statistics.service;
 
+import dev.golddiggerapi.expenditure.controller.dto.UserExpenditureAvgRatioByCategoryStatisticResponse;
 import dev.golddiggerapi.expenditure.repository.ExpenditureRepository;
 import dev.golddiggerapi.statistics.controller.dto.ConsumptionRateByCategoryResponse;
 import dev.golddiggerapi.statistics.controller.dto.ConsumptionRateByCategoryStatistics;
@@ -74,5 +75,9 @@ public class StatisticsService {
                 executeRatingToStringFunction.apply(consumptionRateCompareByOtherUsers, consumptionRateByUser),
                 res
         );
+    }
+
+    public List<UserExpenditureAvgRatioByCategoryStatisticResponse> statisticExpenditureAvgRatioByCategory() {
+        return expenditureRepository.statisticAvgRatioByCategory();
     }
 }
