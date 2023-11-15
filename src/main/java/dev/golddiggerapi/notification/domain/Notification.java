@@ -2,12 +2,16 @@ package dev.golddiggerapi.notification.domain;
 
 import dev.golddiggerapi.expenditure.controller.dto.ExpenditureByTodayRecommendationResponse;
 import dev.golddiggerapi.expenditure.controller.dto.ExpenditureByTodayResponse;
+import dev.golddiggerapi.notification.event.ExpenditureAnalyzeEvent;
+import dev.golddiggerapi.notification.event.ExpenditureRecommendationEvent;
 
 public record Notification(
-        String content
+        String content,
+        String targetDiscordUrl
 ) {
 
-    public static Notification toAnalyzeWebHook(ExpenditureByTodayResponse response) {
+    public static Notification toAnalyzeWebHook(ExpenditureAnalyzeEvent event) {
+        ExpenditureByTodayResponse response = event.expenditureByTodayResponse();
         StringBuilder sb = new StringBuilder();
         sb.append("오늘 총 지출액은 ")
                 .append(response.expenditureSum())
@@ -24,10 +28,11 @@ public record Notification(
                     sb.append("위험도=").append(i.risk()).append("\n");
                 });
 
-        return new Notification(sb.toString());
+        return new Notification(sb.toString(), event.targetDiscordUrl());
     }
 
-    public static Notification toRecommendationWebHook(ExpenditureByTodayRecommendationResponse response) {
+    public static Notification toRecommendationWebHook(ExpenditureRecommendationEvent event) {
+        ExpenditureByTodayRecommendationResponse response = event.expenditureByTodayRecommendationResponse();
         StringBuilder sb = new StringBuilder();
         sb.append("오늘 사용 가능 총액 지출 예산은 ")
                 .append(response.availableTotalExpenditure())
@@ -42,6 +47,6 @@ public record Notification(
                     sb.append("지출가능금액=").append(i.availableExpenditure()).append("원").append("\n");
                 });
 
-        return new Notification(sb.toString());
+        return new Notification(sb.toString(), event.targetDiscordUrl());
     }
 }
