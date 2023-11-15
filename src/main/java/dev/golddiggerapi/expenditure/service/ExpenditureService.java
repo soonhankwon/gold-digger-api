@@ -134,10 +134,10 @@ public class ExpenditureService {
 
     @Scheduled(cron = "0 0 8 * * *")
     public void sendExpenditureRecommendationByToday() {
-        List<User> usersBySubscribeNotification = userRepository.findAllBySubscribeNotification(Boolean.TRUE);
+        List<User> usersBySubscribeNotification = userRepository.findAllBySubscribeNotificationAndDiscordUrlNot(Boolean.TRUE, "NONE");
         usersBySubscribeNotification.forEach(i -> {
             ExpenditureByTodayRecommendationResponse expenditureRecommendationByToday = getExpenditureRecommendationByToday(i.getUsername());
-            applicationEventPublisher.publishEvent(new ExpenditureRecommendationEvent(expenditureRecommendationByToday));
+            applicationEventPublisher.publishEvent(new ExpenditureRecommendationEvent(expenditureRecommendationByToday, i.getDiscordUrl()));
         });
     }
 
@@ -179,10 +179,10 @@ public class ExpenditureService {
 
     @Scheduled(cron = "0 0 20 * * *")
     public void sendExpenditureByToday() {
-        List<User> usersBySubscribeNotification = userRepository.findAllBySubscribeNotification(Boolean.TRUE);
+        List<User> usersBySubscribeNotification = userRepository.findAllBySubscribeNotificationAndDiscordUrlNot(Boolean.TRUE, "NONE");
         usersBySubscribeNotification.forEach(i -> {
             ExpenditureByTodayResponse expenditureByToday = getExpenditureByToday(i.getUsername());
-            applicationEventPublisher.publishEvent(new ExpenditureAnalyzeEvent(expenditureByToday));
+            applicationEventPublisher.publishEvent(new ExpenditureAnalyzeEvent(expenditureByToday, i.getDiscordUrl()));
         });
     }
 
@@ -226,9 +226,5 @@ public class ExpenditureService {
                 sum,
                 reasonableExpenditurePerDay,
                 expenditureByTodayByCategoryStatisticsResponses);
-    }
-
-    public List<UserExpenditureAvgRatioByCategoryStatisticResponse> statisticExpenditureAvgRatioByCategory() {
-        return expenditureRepository.statisticAvgRatioByCategory();
     }
 }
