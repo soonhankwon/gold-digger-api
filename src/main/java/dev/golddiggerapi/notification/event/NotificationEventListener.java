@@ -14,25 +14,20 @@ public class NotificationEventListener {
     @Value("${discord.webhook.baseurl}")
     private String baseurl;
 
-    @Value("${discord.webhook.path}")
-    private String path;
-
     @EventListener
     public void handleRecommendationNotificationEvent(ExpenditureRecommendationEvent event) {
-        ExpenditureByTodayRecommendationResponse expenditureByTodayRecommendation = event.expenditureByTodayRecommendationResponse();
-        executeDiscordWebHook(Notification.toRecommendationWebHook(expenditureByTodayRecommendation));
+        executeDiscordWebHook(Notification.toRecommendationWebHook(event));
     }
 
     @EventListener
     public void handleAnalyzeNotificationEvent(ExpenditureAnalyzeEvent event) {
-        ExpenditureByTodayResponse expenditureByToday = event.expenditureByTodayResponse();
-        executeDiscordWebHook(Notification.toAnalyzeWebHook(expenditureByToday));
+        executeDiscordWebHook(Notification.toAnalyzeWebHook(event));
     }
 
     private void executeDiscordWebHook(Notification notification) {
         WebClient.create(baseurl)
                 .post()
-                .uri(path)
+                .uri(notification.targetDiscordUrl())
                 .bodyValue(notification)
                 .retrieve()
                 .bodyToMono(String.class)

@@ -12,7 +12,8 @@ import java.util.function.Function;
 @Entity
 @Table(name = "`user`", indexes = {
         @Index(name = "idx_username_idx", columnList = "username"),
-        @Index(name = "idx_subscribe_notification_idx", columnList = "subscribe_notification")
+        @Index(name = "idx_subscribe_notification_idx", columnList = "subscribe_notification"),
+        @Index(name = "idx_discord_url_idx", columnList = "discord_url")
 })
 public class User {
 
@@ -28,9 +29,13 @@ public class User {
     @Column(name = "subscribe_notification")
     private Boolean subscribeNotification;
 
+    @Column(name = "discord_url", columnDefinition = "varchar(255) default 'NONE'")
+    private String discordUrl;
+
     public User(UserSignupRequest request, Function<String, String> encoderFunction) {
         this.username = request.username();
         this.password = encoderFunction.apply(request.password());
         this.subscribeNotification = request.subscribeNotification();
+        this.discordUrl = request.discordUrl();
     }
 }
