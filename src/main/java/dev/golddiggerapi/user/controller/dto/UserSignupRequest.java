@@ -16,6 +16,9 @@ public record UserSignupRequest(
 
         @NotBlank(message = "알람수신여부는 true 또는 false 여야 합니다.")
         @Schema(description = "알람수신여부", example = "true")
-        Boolean subscribeNotification
+        Boolean subscribeNotification,
+
+        @Schema(description = "디스코드url", example = "/api/webhooks/...")
+        String discordUrl
 ) {
 }
