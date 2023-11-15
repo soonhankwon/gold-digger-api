@@ -13,7 +13,12 @@ import java.time.format.DateTimeFormatter;
 @NoArgsConstructor
 @Entity
 @Getter
-@Table(name = "expenditure")
+@Table(name = "expenditure", indexes = {
+        @Index(name = "fk_ex_user_idx", columnList = "user_id"),
+        @Index(name = "fk_ex_expenditure_category_idx", columnList = "expenditure_category_id"),
+        @Index(name = "idx_expenditure_date_time_idx", columnList = "expenditure_date_time"),
+        @Index(name = "idx_expenditure_status_idx", columnList = "expenditure_status")
+})
 public class Expenditure {
 
     @Id
@@ -24,9 +29,11 @@ public class Expenditure {
 
     private String memo;
 
+    @Column(name = "expenditure_date_time")
     private LocalDateTime expenditureDateTime;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "expenditure_status")
     private ExpenditureStatus expenditureStatus;
 
     private LocalDateTime createdAt;

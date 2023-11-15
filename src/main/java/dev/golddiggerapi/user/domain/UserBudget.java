@@ -13,7 +13,11 @@ import java.time.*;
 @NoArgsConstructor
 @Getter
 @Entity
-@Table(name = "user_budget")
+@Table(name = "user_budget", indexes = {
+        @Index(name = "fk_ub_user_idx", columnList = "user_id"),
+        @Index(name = "fk_ub_expenditure_category_idx", columnList = "expenditure_category_id"),
+        @Index(name = "idx_planned_month_idx", columnList = "planned_month")
+})
 public class UserBudget {
 
     @Id
@@ -22,6 +26,7 @@ public class UserBudget {
 
     private Long amount;
 
+    @Column(name = "planned_month")
     private LocalDateTime plannedMonth;
 
     private LocalDateTime createdAt;
