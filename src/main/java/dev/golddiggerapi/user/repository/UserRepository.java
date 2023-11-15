@@ -13,5 +13,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findUserByUsername(String username);
 
-    List<User> findAllBySubscribeNotification(Boolean subscribeNotification);
+    List<User> findAllBySubscribeNotificationAndDiscordUrlNot(Boolean subscribeNotification, String discordUrl);
 }
