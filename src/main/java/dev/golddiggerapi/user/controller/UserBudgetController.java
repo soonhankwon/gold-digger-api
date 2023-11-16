@@ -46,10 +46,9 @@ public class UserBudgetController {
 
     @Operation(summary = "유저예산 추천 조회 API")
     @GetMapping("/{budget}/recommend")
-    public ResponseEntity<List<UserBudgetRecommendation>> getUserBudgetByRecommendation(@AuthenticationPrincipal UserPrincipal userPrincipal,
-                                                                                        @Parameter(description = "예산 입력값", required = true)
+    public ResponseEntity<List<UserBudgetRecommendation>> getUserBudgetByRecommendation(@Parameter(description = "예산 입력값", required = true)
                                                                                         @PathVariable Long budget) {
-        List<UserBudgetRecommendation> res = userBudgetService.getUserBudgetByRecommendation(userPrincipal.getUsername(), budget);
+        List<UserBudgetRecommendation> res = userBudgetService.getUserBudgetByRecommendation(budget);
         return ResponseEntity.ok().body(res);
     }
 
