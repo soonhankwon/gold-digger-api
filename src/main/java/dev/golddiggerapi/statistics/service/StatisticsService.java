@@ -1,5 +1,7 @@
 package dev.golddiggerapi.statistics.service;
 
+import dev.golddiggerapi.exception.CustomErrorCode;
+import dev.golddiggerapi.exception.detail.ApiException;
 import dev.golddiggerapi.expenditure.controller.dto.UserExpenditureAvgRatioByCategoryStatisticResponse;
 import dev.golddiggerapi.expenditure.repository.ExpenditureRepository;
 import dev.golddiggerapi.statistics.controller.dto.ConsumptionRateByCategoryResponse;
@@ -30,7 +32,7 @@ public class StatisticsService {
 
     public ExpenditureStatisticsResponse getExpenditureStatistics(String username) {
         User user = userRepository.findUserByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startOfLastMonth = YearMonth.now().minusMonths(1).atDay(1).atStartOfDay();
@@ -68,7 +70,6 @@ public class StatisticsService {
         // 다른 유저 대비 소비율 (오늘 기준 다른 유저가 예산 대비 사용한 평균 비율 대비 나의 비율)
         Long consumptionRateCompareByOtherUsers = userBudgetRepository.getUserBudgetConsumptionRateByUsers(user);
         Long consumptionRateByUser = userBudgetRepository.getUserBudgetConsumptionRateByUser(user);
-        log.info("users={} me={}", consumptionRateCompareByOtherUsers, consumptionRateByUser);
         return new ExpenditureStatisticsResponse(
                 executeRatingToStringFunction.apply(previousMonthTotalPrice, thisMonthTotalPrice),
                 executeRatingToStringFunction.apply(previousDayTotalPrice, thisDayTotalPrice),

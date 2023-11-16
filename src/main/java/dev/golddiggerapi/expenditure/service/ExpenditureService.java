@@ -1,6 +1,8 @@
 package dev.golddiggerapi.expenditure.service;
 
 import dev.golddiggerapi.budget_consulting.service.BudgetConsultingService;
+import dev.golddiggerapi.exception.CustomErrorCode;
+import dev.golddiggerapi.exception.detail.ApiException;
 import dev.golddiggerapi.expenditure.controller.dto.*;
 import dev.golddiggerapi.expenditure.domain.Expenditure;
 import dev.golddiggerapi.expenditure.domain.ExpenditureCategory;
@@ -41,10 +43,10 @@ public class ExpenditureService {
     @Transactional
     public String createExpenditure(String username, Long categoryId, ExpenditureRequest request) {
         User user = userRepository.findUserByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
         ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("no category id in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
 
         Expenditure expenditure = new Expenditure(user, category, request);
         expenditureRepository.save(expenditure);
@@ -54,13 +56,13 @@ public class ExpenditureService {
     @Transactional
     public String updateExpenditure(String username, Long expenditureId, ExpenditureUpdateRequest request) {
         User user = userRepository.findUserByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
         ExpenditureCategory category = expenditureCategoryRepository.findById(request.categoryId())
-                .orElseThrow(() -> new IllegalArgumentException("no category id in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
 
         Expenditure expenditure = expenditureRepository.findExpenditureByIdAndUser(expenditureId, user)
-                .orElseThrow(() -> new IllegalArgumentException("no expenditure id by user"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.NOT_USER_EXPENDITURE_ID));
 
         // 지출액 업데이트
         expenditure.update(request, category);
@@ -69,17 +71,17 @@ public class ExpenditureService {
 
     public ExpenditureResponse getExpenditure(String username, Long expenditureId) {
         User user = userRepository.findUserByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
         Expenditure expenditure = expenditureRepository.findExpenditureByIdAndUser(expenditureId, user)
-                .orElseThrow(() -> new IllegalArgumentException("no expenditure id by user"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.NOT_USER_EXPENDITURE_ID));
 
         return ExpenditureResponse.toResponse(expenditure);
     }
 
     public ExpenditureByUserResponse getExpendituresByUser(String username, ExpenditureByUserRequest request) {
         User user = userRepository.findUserByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
         // 카테고리 ID가 없을 경우 : 전체 카테고리 목록 조회
         List<ExpenditureCategoryAndAmountResponse> response = expenditureRepository.statisticExpenditureCategoryAndAmount(user, request);
         // 각 지출 메모와 액수를 조회한다.
@@ -111,10 +113,10 @@ public class ExpenditureService {
     @Transactional
     public String deleteExpenditure(String username, Long expenditureId) {
         User user = userRepository.findUserByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
         Expenditure expenditure = expenditureRepository.findExpenditureByIdAndUser(expenditureId, user)
-                .orElseThrow(() -> new IllegalArgumentException("no expenditure in db or no auth to delete"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.NOT_USER_EXPENDITURE_ID));
 
         expenditureRepository.delete(expenditure);
         return "deleted";
@@ -123,10 +125,10 @@ public class ExpenditureService {
     @Transactional
     public String excludeExpenditure(String username, Long expenditureId) {
         User user = userRepository.findUserByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
         Expenditure expenditure = expenditureRepository.findExpenditureByIdAndUser(expenditureId, user)
-                .orElseThrow(() -> new IllegalArgumentException("no expenditure in db or no auth to delete"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.NOT_USER_EXPENDITURE_ID));
 
         expenditure.exclude();
         return "excluded";
@@ -143,7 +145,7 @@ public class ExpenditureService {
 
     public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByToday(String username) {
         User user = userRepository.findUserByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
         // 이번달의 어제까지의 카테고리별 지출을 예산에 반영해야한다.
         // 유저의 오늘 지출 가능한 금액 총액, 카테고리별 금액
@@ -188,7 +190,7 @@ public class ExpenditureService {
 
     public ExpenditureByTodayResponse getExpenditureByToday(String username) {
         User user = userRepository.findUserByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
         // 유저의 카테고리별 오늘 지출 통계 결과를 가져온다.
         List<ExpenditureCategoryAndAmountResponse> expenditureCategoryAndAmountResponses = expenditureRepository.statisticExpenditureCategoryAndAmountByTodayByUser(user);
 

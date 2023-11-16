@@ -1,7 +1,5 @@
 package dev.golddiggerapi.notification.event;
 
-import dev.golddiggerapi.expenditure.controller.dto.ExpenditureByTodayRecommendationResponse;
-import dev.golddiggerapi.expenditure.controller.dto.ExpenditureByTodayResponse;
 import dev.golddiggerapi.notification.domain.Notification;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
