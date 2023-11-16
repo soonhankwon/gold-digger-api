@@ -1,5 +1,7 @@
 package dev.golddiggerapi.user.service;
 
+import dev.golddiggerapi.exception.CustomErrorCode;
+import dev.golddiggerapi.exception.detail.ApiException;
 import dev.golddiggerapi.expenditure.domain.ExpenditureCategory;
 import dev.golddiggerapi.expenditure.repository.ExpenditureCategoryRepository;
 import dev.golddiggerapi.user.controller.dto.UserBudgetAvgRatioByCategoryStatisticResponse;
@@ -30,10 +32,10 @@ public class UserBudgetService {
     @Transactional
     public String createUserBudget(String username, Long categoryId, UserBudgetCreateRequest request) {
         User user = userRepository.findUserByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
         ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
-                .orElseThrow(() -> new IllegalArgumentException("no category id in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
 
         UserBudget userBudget = new UserBudget(user, category, request);
         validateDuplicatedUserBudget(user, userBudget, category);
@@ -48,13 +50,13 @@ public class UserBudgetService {
     @Transactional
     public String updateUserBudget(String username, Long userBudgetId, UserBudgetUpdateRequest request) {
         User user = userRepository.findUserByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
         UserBudget userBudget = userBudgetRepository.findById(userBudgetId)
-                .orElseThrow(() -> new IllegalArgumentException("no user budget in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_BUDGET_NOT_FOUND_DB));
 
         ExpenditureCategory category = expenditureCategoryRepository.findById(request.categoryId())
-                .orElseThrow(() -> new IllegalArgumentException("no category id in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
 
         // 유저 예산의 카테고리, 년, 월, 예산총액을 수정할 수 있다.
         userBudget.update(request, category);
@@ -65,14 +67,11 @@ public class UserBudgetService {
 
     private void validateDuplicatedUserBudget(User user, UserBudget userBudget, ExpenditureCategory category) {
         if (isExistsUserBudgetByCategoryAndMonth(user, category, userBudget.getPlannedMonth())) {
-            throw new IllegalArgumentException("duplicated user budget category in month");
+            throw new ApiException(CustomErrorCode.DUPLICATED_USER_BUDGET);
         }
     }
 
-    public List<UserBudgetRecommendation> getUserBudgetByRecommendation(String username, Long budget) {
-        User user = userRepository.findUserByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
-
+    public List<UserBudgetRecommendation> getUserBudgetByRecommendation(Long budget) {
         List<UserBudgetAvgRatioByCategoryStatisticResponse> statisticResponses =
                 userBudgetRepository.statisticUserBudgetAvgRatioByCategory();
 
@@ -96,10 +95,11 @@ public class UserBudgetService {
     @Transactional
     public String createUserBudgetByRecommendation(String username, List<UserBudgetRecommendation> request) {
         User user = userRepository.findUserByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("no account name in db"));
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
         request.forEach(i -> {
             UserBudget userBudget = new UserBudget(user, i.category(), i.amount());
+            validateDuplicatedUserBudget(user, userBudget, i.category());
             userBudgetRepository.save(userBudget);
         });
 
