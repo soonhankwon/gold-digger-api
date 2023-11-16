@@ -4,6 +4,7 @@ import dev.golddiggerapi.exception.detail.ApiException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -17,6 +18,12 @@ public class ExControllerAdvice {
         HttpStatus status = e.getCustomErrorCode().getStatus();
         ErrorResponse response = ErrorResponse.of(e.getCustomErrorCode());
         return new ResponseEntity<>(response, status);
+    }
+
+    @ExceptionHandler
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ErrorResponse handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
+        return ErrorResponse.of(e.getBindingResult());
     }
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
