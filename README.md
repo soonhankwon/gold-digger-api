@@ -89,12 +89,13 @@
   - 알람수신여부(subscribeNotification): 알람서비스 수신 여부
     - 서비스에 디스코드 웹훅을 통한 `알람서비스`가 포함되어있습니다.
     - 해당 수신여부를 꼭 설정해야 불필요한 DB스캔 및 사용자 경험을 개선시킬수 있다고 생각했습니다.
-  <details>
-  <summary>유저가입 Validation 코드- Click!</summary>
-        
-        ```java
-        @Schema(description = "회원 가입 요청 DTO")
-        public record UserSignupRequest(
+<details>
+<summary><strong> 회원가입 요청 Validation CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+@Schema(description = "회원 가입 요청 DTO")
+public record UserSignupRequest(
 
         @NotBlank(message = "계정명은 하나 이상의 공백이 아닌 문자를 포함해야 합니다.")
         @Size(min = 6, max = 30, message = "계정명은 6자이상 30자이하로 작성해야합니다.")
@@ -116,10 +117,12 @@
 
         @Schema(description = "디스코드url", example = "/api/webhooks/...")
         String discordUrl
-      ) {
-      }
-      ```
-  <details/>
+) {
+}
+````
+</div>
+</details>
+
 - 패스워드는 잘 `암호화` 되어있나?
   - 시큐리티에서 제공하는 `PasswordEncoderFactories`의 createDelegatingPasswordEncoder 메서드를 통해 인코더를 빈으로 등록했습니다.
     - 이유는 인증, 인가에 대해서는 최대한 시큐리티에서 제공하는 흐름대로 구현하는것이 `안정성`면에서 좋다고 생각했습니다.
