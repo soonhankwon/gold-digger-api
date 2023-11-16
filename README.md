@@ -37,6 +37,7 @@
 - Java 17 Amazon Corretto
 - SpringBoot 3.1.5
 - Spring Data JPA 3.1.5
+- Spring Validation 3.1.5
 - Querydsl 5.0.0
 - Spring Data Redis 3.1.5
 - Spring WebFlux 6.0.13
@@ -126,15 +127,84 @@ public record UserSignupRequest(
 - 패스워드는 잘 `암호화` 되어있나?
   - 시큐리티에서 제공하는 `PasswordEncoderFactories`의 createDelegatingPasswordEncoder 메서드를 통해 인코더를 빈으로 등록했습니다.
     - 이유는 인증, 인가에 대해서는 최대한 시큐리티에서 제공하는 흐름대로 구현하는것이 `안정성`면에서 좋다고 생각했습니다.
-  - 시큐리티에 위임하는 인코더를 통해 `패스워드를 암호화`하고 로그인시에도 시큐리티가 인증절차에서 해당 인코더로 패스워드 검증을 수행합니다. 
+  - 시큐리티에 위임하는 인코더를 통해 `패스워드를 암호화`하고 로그인시에도 시큐리티가 인증절차에서 해당 인코더로 패스워드 검증을 수행합니다.
+
+<details>
+<summary><strong> 패스워드 인코딩 CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+    @Transactional
+    public String createUser(UserSignupRequest request) {
+        if(isExistsUsername(request.username())) {
+            throw new ApiException(CustomErrorCode.USERNAME_ALREADY_EXISTS);
+        }
+        // 등록된 패스워드 인코더의 encode를 사용하는 함수생성
+        Function<String, String> encodeFunction = passwordEncoder::encode;
+        // 함수를 생성자 파라미터로 넘겨 요청의 패스워드를 인코딩합니다.
+        User user = new User(request, encodeFunction);
+        userRepository.save(user);
+        return "created";
+    }
+````
+</div>
+</details>
+
 2. 로그인 API
 - 로그인시 `JWT`가 잘 발급이 되나?
   - 인증과정에서 가장 중점을 뒀던 점은 시큐리티에서 제공하는 흐름과 기능을 최대한 맞춰서 이용하는 것이었습니다.
   - 이유는 시큐리티는 `보안에 전문적`인 라이브러리이기 때문에 저보다 보안에 훨씬 전문적이라고 생각하기 때문입니다.
   - 시큐리티의 `AuthenticationManager`와 `JwtAuthenticationFilter`를 통해 로그인을 수행하도록 했습니다.
   - JwtAuthenticationFilter 인증과정을 통해 로그인이 정상적이라면 `헤더`에 `AccessToken`과 `RefreshToken`을 발급합니다.
+<details>
+<summary><strong> AccessToken과 RefreshToken 발급 CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+    @Override
+    protected void successfulAuthentication(HttpServletRequest request,
+                                            HttpServletResponse response,
+                                            FilterChain chain,
+                                            Authentication authResult) {
+        UserPrincipal principal = (UserPrincipal) authResult.getPrincipal();
+
+        String username = principal.getUsername();
+        String accessToken = jwtProvider.generateAccessToken(principal.getId(), username);
+        response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);
+
+        String refreshToken = jwtProvider.generateRefreshToken(username);
+        redisTokenRepository.saveRefreshToken(refreshToken, username);
+        response.setHeader("Refresh", "Bearer " + refreshToken);
+    }
+````
+</div>
+</details>
 - 이후 헤더의 AccessToken를 통해 url `인가`가 이루어지며, AccessToken 만료시 RefreshToken을 통해 재발급을 받습니다.
-  
+- RefreshToken은 DB/IO를 줄이기위해 `캐싱`을 해놓고 사용 & `만료시간`이 지나면 삭제하기위해 `Redis`를 활용했습니다.
+<details>
+<summary><strong> JWT 재발급 CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+    // 토큰 재발급 서비스 레이어
+    public void reissue(HttpServletRequest request, HttpServletResponse response) {
+        // 유저의 리프레시 토큰 검증 후 기존 리프레시토큰 캐싱 삭제 & user 객체를 가져옵니다.
+        User user = verifyRefreshTokenExists(request);
+        String username = user.getUsername();
+        
+        String newAccessToken = jwtProvider.generateAccessToken(user.getId(), username);
+        response.setHeader(HttpHeaders.AUTHORIZATION, "Bearer " + newAccessToken);
+
+        String newRefreshToken = jwtProvider.generateRefreshToken(username);
+        // 새로운 리프레시 토큰을 캐싱합니다.
+        redisTokenRepository.saveRefreshToken(newRefreshToken, username);
+        response.addHeader("Refresh", newRefreshToken);
+    }
+````
+</div>
+</details>
+<br/>
+
 ### 예산설정 및 설계 API 고려사항
 ---
 1. 지출 카테고리
