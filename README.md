@@ -299,7 +299,8 @@ public record UserSignupRequest(
     public UserBudgetAvgRatioByCategoryStatisticResponse {
         }
     }
-    
+
+    // 쿼리 구현 - Querydsl
     @Override
     public List<UserBudgetAvgRatioByCategoryStatisticResponse> statisticUserBudgetAvgRatioByCategory() {
         return queryFactory.select(
@@ -351,6 +352,28 @@ public record UserSignupRequest(
 #### 추천예산 설정(POST): 유저는 예산 추천 기능으로 입력 된 값들을 필요에 따라 수정(화면에서) 한 뒤 이를 저장(=추천 예산설정 API)합니다.
 - `중복된 해당 월 & 카테고리의 유저 예산`이 존재할 경우?
   - `추천된 List`로 요청을 받는 추천 예산설정API의 비즈니스 로직 루프에서 유저예산 객체생성후 `기존 중복된 예산이 있는지 검증`하여 `예외처리`하도록 했습니다.  
+<details>
+<summary><strong> 기존 예산과 중복되는 경우 예외처리 CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+    @Transactional
+    public String createUserBudgetByRecommendation(String username, List<UserBudgetRecommendation> request) {
+        User user = userRepository.findUserByUsername(username)
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
+
+        request.forEach(i -> {
+            UserBudget userBudget = new UserBudget(user, i.category(), i.amount());
+            // 중복되는 예산이 있는지 검증하여 예외처리합니다.
+            validateDuplicatedUserBudget(user, userBudget, i.category());
+            userBudgetRepository.save(userBudget);
+        });
+
+        return "created by recommendation";
+    }
+````
+</div>
+</details>
 
 ### 지출기록 고려사항
 ---
