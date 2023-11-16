@@ -179,8 +179,10 @@ public record UserSignupRequest(
 ````
 </div>
 </details>
+
 - 이후 헤더의 AccessToken를 통해 url `인가`가 이루어지며, AccessToken 만료시 RefreshToken을 통해 재발급을 받습니다.
 - RefreshToken은 DB/IO를 줄이기위해 `캐싱`을 해놓고 사용 & `만료시간`이 지나면 삭제하기위해 `Redis`를 활용했습니다.
+
 <details>
 <summary><strong> JWT 재발급 CODE - Click! </strong></summary>
 <div markdown="1">       
