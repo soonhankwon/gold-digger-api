@@ -235,21 +235,119 @@ public record UserSignupRequest(
 
 3. 유저 예산설정 API  
 - 유저예산 설정(POST): 월단위로 `예산` 을 설정합니다. 예산은 `카테고리` 를 필수로 지정합니다.
-  - `유저예산 테이블`은 `유저`와 `지출카테고리`를 `FK`로 가지고 필요한 경우 JOIN해서 로직을 수행할수있도록 `연관관계`를 설정했습니다. 
+  - `유저예산 테이블`은 `유저`와 `지출카테고리`를 `FK`로 가지고 필요한 경우 JOIN해서 로직을 수행할 수 있도록 `연관관계`를 설정했습니다. 
   - 예산은 액수, 년, 월을 요청받아 만들어집니다.
 - 유저예산 수정(PATCH): 사용자는 예산의 액수, 년, 월, 지출 카테고리를 `변경`할 수 있도록 구현했습니다.
 - 년, 월, 지출 카테고리를 변경했을 경우 `기존 예산과 중복`된다면?
   - 유저예산 테이블에 설정년월을 의미하는 `plannedMonth`라는 datetime 데이터 타입의 컬럼을 만들었습니다.
   - plannedMonth는 ex)`2023-11-01 00:00:00.000000`로 DB에 저장됩니다.
-  - 예산을 변경하고 유저에게 이미 plannedMonth와 카테고리가 같은 설정예산이 있다면 `예외처리`합니다.  
+  - 예산을 변경하고 유저에게 이미 plannedMonth와 카테고리가 같은 설정예산이 있다면 `예외처리`합니다.
+<details>
+<summary><strong> 기존 예산과 중복되는 경우 예외처리 CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+    @Transactional
+    public String createUserBudget(String username, Long categoryId, UserBudgetCreateRequest request) {
+        User user = userRepository.findUserByUsername(username)
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
+
+        ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
+
+        UserBudget userBudget = new UserBudget(user, category, request);
+        // 동일 유저 예산이 있다면 예외처리합니다.
+        validateDuplicatedUserBudget(user, userBudget, category);
+        userBudgetRepository.save(userBudget);
+        return "created";
+    }
+
+    private void validateDuplicatedUserBudget(User user, UserBudget userBudget, ExpenditureCategory category) {
+        // 카테고리와 설정년월이 같다면 -> 예외처리
+        if (isExistsUserBudgetByCategoryAndMonth(user, category, userBudget.getPlannedMonth())) {
+            throw new ApiException(CustomErrorCode.DUPLICATED_USER_BUDGET);
+        }
+    }
+````
+</div>
+</details>
+
 4. 예산설계(=추천) API
 - 카테고리 별 예산 설정에 어려움이 있는 사용자를 위해 `예산 비율 추천 기능` API입니다.
 - 카테고리 지정 없이 총액 (ex. 100만원) 을 입력하면, 카테고리 별 예산을 자동 생성합니다.
-#### 예산추천 조회(GET): 기존 이용중인 유저 들이 설정한 `카테고리 예산 설정 비율의 평균 값`입니다.
-- 카테고리 별 예산 비율 평균값이 기준에 따라서 `왜곡`되지는 않는가?
-  - 금액을 총합해서 카테고리 별 예산비율을 내면 사용자들끼리의 카테고리 별 예산이 크게 차이가 난다면 평균값이 왜곡됩니다.
-  - 따라서, 각 유저의 총 예산 대비 `카테고리 예산 설정비율의 평균값`으로 해당 기능을 구현했습니다.
-  - ex) A유저의 식사 카테고리 설정비율 20%, B유저의 식사 카테고리 설정비율 10% -> 추천 식사 카테고리 설정비율 15%   
+- 총액입력은 `PathVariable`로 url을 활용했습니다.
+  - url path: api/budget/{budget}/recommend
+#### 예산추천 조회(GET):
+- 유저들이 설정한 카테고리 별 예산을 통계하여, 평균적으로 40% 를 `식비`에, 30%를 `주거` 에 설정 하였다면 이에 맞게 추천합니다.
+- 10% 이하의 카테고리들은 모두 묶어 `기타` 로 제공합니다.(8% 문화, 7% 레져 라면 15% 기타로 표기) 
+- 원하는 타입으로 통계결과를 조회할 수 있도록 `@QueryProjection`을 사용하여 QFile을 생성해서 `select절`에 사용했습니다.
+- Querydsl의 JPAExpressions `Subquery`를 활용하여 유저들의 설정예산 총합에서 카테고리 별로 `groupBy`된 유저들의 카테고리별 예산의 합을 나누어서 비율을 구합니다.
+- Having절에서 `10프로 이하인 카테고리는 제외`해주고 비즈니스로직에서 기타 카테고리를 따로 추가해주도록 구현했습니다.
+  - `1.0D - 조회한 통계결과의 비율의 합`의 결과가 곧 `기타 카테고리`로 들어갈 값이기 때문입니다. 
+<details>
+<summary><strong> 유저예산 카테고리 별 평균 설정 비율 통계 쿼리 & 비즈니스 로직 CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+    // 유저예산 카테고리 별 평균 설정 비율 통계 응답 record
+    public record UserBudgetAvgRatioByCategoryStatisticResponse(
+            ExpenditureCategory category,
+            Double avgRatio
+    ) {
+    // QueryProjection을 사용해서 QFile생성 후 select절에서 사용합니다.
+    @QueryProjection
+    public UserBudgetAvgRatioByCategoryStatisticResponse {
+        }
+    }
+    
+    @Override
+    public List<UserBudgetAvgRatioByCategoryStatisticResponse> statisticUserBudgetAvgRatioByCategory() {
+        return queryFactory.select(
+                        new QUserBudgetAvgRatioByCategoryStatisticResponse(expenditureCategory,
+                                userBudget.amount.sum().divide(
+                                                JPAExpressions.select(userBudget.amount.sum())
+                                                        .from(userBudget)
+                                                        .where(userBudget.expenditureCategory.eq(expenditureCategory)))
+                                        .doubleValue()))
+                .from(userBudget)
+                .join(userBudget.expenditureCategory).on(userBudget.expenditureCategory.eq(expenditureCategory))
+                .groupBy(expenditureCategory)
+                .having(userBudget.amount.sum().divide(
+                                JPAExpressions.select(userBudget.amount.sum())
+                                        .from(userBudget)
+                                        .where(userBudget.expenditureCategory.eq(expenditureCategory)))
+                        // 10프로 이하인 카테고리는 제외합니다.
+                        .doubleValue().gt(0.10))
+                .fetch();
+    }
+
+    // 서비스 레이어
+    public List<UserBudgetRecommendation> getUserBudgetByRecommendation(Long budget) {
+        List<UserBudgetAvgRatioByCategoryStatisticResponse> statisticResponses =
+                userBudgetRepository.statisticUserBudgetAvgRatioByCategory();
+
+        List<UserBudgetRecommendation> res = new ArrayList<>();
+
+        // 루프를 돌면서 비율을 뺴줘서 남은 비율은 기타로 들어갑니다.
+        AtomicReference<Double> totalRatio = new AtomicReference<>(1.0D);
+        statisticResponses.forEach(i -> {
+            UserBudgetRecommendation userBudgetRecommendation = new UserBudgetRecommendation(i.category(), Math.round(budget * i.avgRatio()));
+            res.add(userBudgetRecommendation);
+            totalRatio.set(totalRatio.get() - i.avgRatio());
+        });
+
+        // 비율이 남아있다면 기타로 들어갑니다.
+        if (hasRemainingTotalRatio(totalRatio)) {
+            ExpenditureCategory etcCategory = new ExpenditureCategory(10L, "기타");
+            UserBudgetRecommendation userBudgetRecommendation = new UserBudgetRecommendation(etcCategory, Math.round(budget * totalRatio.get()));
+            res.add(userBudgetRecommendation);
+        }
+        return res;
+    }
+````
+</div>
+</details>
+
 #### 추천예산 설정(POST): 유저는 예산 추천 기능으로 입력 된 값들을 필요에 따라 수정(화면에서) 한 뒤 이를 저장(=추천 예산설정 API)합니다.
 - `중복된 해당 월 & 카테고리의 유저 예산`이 존재할 경우?
   - `추천된 List`로 요청을 받는 추천 예산설정API의 비즈니스 로직 루프에서 유저예산 객체생성후 `기존 중복된 예산이 있는지 검증`하여 `예외처리`하도록 했습니다.  
