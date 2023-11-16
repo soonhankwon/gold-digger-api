@@ -1,5 +1,7 @@
 package dev.golddiggerapi.expenditure.controller.dto;
 
+import dev.golddiggerapi.exception.CustomErrorCode;
+import dev.golddiggerapi.exception.detail.ApiException;
 import lombok.Getter;
 
 import java.time.LocalDate;
@@ -30,15 +32,15 @@ public class ExpenditureByUserRequest {
     private void validateDate(LocalDate start, LocalDate end) {
         LocalDate dayOfServiceStart = LocalDate.of(2023, Month.JANUARY, 2);
         if (start.isBefore(dayOfServiceStart) || end.isBefore(dayOfServiceStart)) {
-            throw new IllegalArgumentException("non service day");
+            throw new ApiException(CustomErrorCode.INVALID_PARAMETER_DATE_NONE_SERVICE_DAY);
         }
         if (start.isAfter(end)) {
-            throw new IllegalArgumentException("start can't after end");
+            throw new ApiException(CustomErrorCode.INVALID_PARAMETER_START_DATE);
         }
 
         long period = ChronoUnit.DAYS.between(start, end);
         if (period >= 30) {
-            throw new IllegalArgumentException("period is up to 30 days");
+            throw new ApiException(CustomErrorCode.INVALID_EXPENDITURES_GET_DURATION);
         }
     }
 }
