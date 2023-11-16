@@ -73,7 +73,6 @@
 - 개인 프로젝트이기 때문에 브랜치 관리전략은 Master(Production) - Dev로 간단하게 가져갔습니다.
 - Dev 브랜치를 소스로 `이슈브랜치`에서 작업 & PR & MERGE 과정으로 진행했습니다.
 - 하루에 한번 기준으로 Dev to Master(Production)로 PR & MERGE를 진행했습니다.
-
 <br/>
 
 ## 구현과정(설계 및 의도)
@@ -90,6 +89,37 @@
   - 알람수신여부(subscribeNotification): 알람서비스 수신 여부
     - 서비스에 디스코드 웹훅을 통한 `알람서비스`가 포함되어있습니다.
     - 해당 수신여부를 꼭 설정해야 불필요한 DB스캔 및 사용자 경험을 개선시킬수 있다고 생각했습니다.
+  <details>
+  <summary>유저가입 Validation 코드- Click!</summary>
+        
+        ```java
+        @Schema(description = "회원 가입 요청 DTO")
+        public record UserSignupRequest(
+
+        @NotBlank(message = "계정명은 하나 이상의 공백이 아닌 문자를 포함해야 합니다.")
+        @Size(min = 6, max = 30, message = "계정명은 6자이상 30자이하로 작성해야합니다.")
+        @Schema(description = "계정명", example = "username")
+        String username,
+
+        @NotBlank(message = "패스워드는 하나 이상의 공백이 아닌 문자를 포함해야 합니다.")
+        @Size(min = 8, message = "패스워드는 최소 8글자 이상이어야 합니다.")
+        @Pattern(
+                regexp = "^(?=.*[0-9])(?=.*[a-zA-Z])(?=.*[@#$%^&+=!]).*$",
+                message = "패스워드는 숫자, 문자, 특수 문자를 포함해야 합니다."
+        )
+        @Schema(description = "패스워드", example = "password1!")
+        String password,
+
+        @Schema(description = "알람수신여부", example = "true")
+        @NotNull(message = "알람수신여부는 true 또는 false 여야 합니다.")
+        Boolean subscribeNotification,
+
+        @Schema(description = "디스코드url", example = "/api/webhooks/...")
+        String discordUrl
+      ) {
+      }
+      ```
+  <details/>
 - 패스워드는 잘 `암호화` 되어있나?
   - 시큐리티에서 제공하는 `PasswordEncoderFactories`의 createDelegatingPasswordEncoder 메서드를 통해 인코더를 빈으로 등록했습니다.
     - 이유는 인증, 인가에 대해서는 최대한 시큐리티에서 제공하는 흐름대로 구현하는것이 `안정성`면에서 좋다고 생각했습니다.
