@@ -59,16 +59,21 @@
 <br/>
 
 ## erd
+![erd](https://github.com/soonhankwon/gold-digger-api/assets/113872320/52ad476b-0ee1-43c7-9e66-54ef51dc4126)
 <br/>
 
 ## 프로젝트 진행 및 이슈관리
 - 프로젝트 진행시 `전체적인 진행 현황` 과 `시간을 효율적으로 관리`하기 위해서 `깃허브 프로젝트`를 활용했습니다.
+  - [프로젝트 링크 - Click!](https://github.com/users/soonhankwon/projects/5)
+  <img src="https://github.com/soonhankwon/gold-digger-api/assets/113872320/acbb7af1-e1eb-4566-ac3a-9335d1d25df3" align="center" height=250px width="40%" />
+  <img src="https://github.com/soonhankwon/gold-digger-api/assets/113872320/171abedb-bab7-4de4-9526-392d591191cd" align="center" height=250px width="40%" />
 - 프로젝트에 필요한 구현해야할 기능 등 을 `이슈`발행하여 `시작 & 데드라인` 기간을 설정, `로드맵`에서 한눈에 파악할 수 있도록 했습니다.
   - 이슈형식이 달라 알아보기 힘든 경우를 방지하도록 `이슈템플릿`을 등록하여 통일된 형식으로 이슈를 관리했습니다.
 - `칸반보드`도 연동되기 때문에 TODO, IN PROGRESS, DONE으로 프로젝트의 `티켓`들을 관리했습니다.  
 - 개인 프로젝트이기 때문에 브랜치 관리전략은 Master(Production) - Dev로 간단하게 가져갔습니다.
 - Dev 브랜치를 소스로 `이슈브랜치`에서 작업 & PR & MERGE 과정으로 진행했습니다.
 - 하루에 한번 기준으로 Dev to Master(Production)로 PR & MERGE를 진행했습니다.
+
 <br/>
 
 ## 구현과정(설계 및 의도)
