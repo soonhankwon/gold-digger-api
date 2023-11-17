@@ -9,11 +9,13 @@ import jakarta.validation.constraints.NotBlank;
 public record UserBudgetUpdateRequest(
 
         @Schema(description = "수정 예산액", example = "400000")
-        @Min(value = 0)
+        @Min(value = 0, message = "예산은 0보다 작을수 없습니다.")
+        @Max(value = 10_000_000_000L, message = "예산은 100억 보다 클수 없습니다.")
         Long amount,
 
         @Schema(description = "수정년도", example = "2023")
-        @Max(value = 2100)
+        @Min(value = 2022, message = "2022년부터 예산을 설정할 수 있습니다.")
+        @Max(value = 2100, message = "최대 2100년까지 예산을 설정할 수 있습니다.")
         Integer year,
 
         @Schema(description = "수정월", example = "12")
