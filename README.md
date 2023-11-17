@@ -731,12 +731,72 @@ public record ExpenditureRequest(
 - 외부 API를 사용해서 사용자의 `디스코드 웹훅 url`에 웹훅을 보내는 서비스입니다.
 - `08:00` 에는 `오늘의 지출 추천` 알람, `20:00` 에는 `오늘의 지출 안내 및 분석` 알람을 보냅니다.
 - `스프링 스케줄러`와 `cron식`을 사용하여 구현했습니다.
+<details>
+<summary><strong> 웹훅 전송 스케쥴링 CODE - Click! </strong></summary>
+<div markdown="1"> 
+
+  ````java
+    @Scheduled(cron = "0 0 8 * * *")
+    public void sendExpenditureRecommendationByToday() {
+        List<User> usersBySubscribeNotification = userRepository.findAllBySubscribeNotificationAndDiscordUrlNot(Boolean.TRUE, "NONE");
+        usersBySubscribeNotification.forEach(i -> {
+            ExpenditureByTodayRecommendationResponse expenditureRecommendationByToday = getExpenditureRecommendationByToday(i.getUsername());
+            applicationEventPublisher.publishEvent(new ExpenditureRecommendationEvent(expenditureRecommendationByToday, i.getDiscordUrl()));
+        });
+    }
+
+    @Scheduled(cron = "0 0 20 * * *")
+    public void sendExpenditureByToday() {
+        List<User> usersBySubscribeNotification = userRepository.findAllBySubscribeNotificationAndDiscordUrlNot(Boolean.TRUE, "NONE");
+        usersBySubscribeNotification.forEach(i -> {
+            ExpenditureByTodayResponse expenditureByToday = getExpenditureByToday(i.getUsername());
+            applicationEventPublisher.publishEvent(new ExpenditureAnalyzeEvent(expenditureByToday, i.getDiscordUrl()));
+        });
+    }
+  ````
+</div>
+</details>
+
 - `외부API` 사용시 `디커플링` 및 `scale-out`이 가능하도록 설계했는가?
   - 외부API 사용시 외부API 상황에 따라 서버에 미치는 영향을 최소화하는것이 중요하다고 생각합니다.
   - 이를 위해 `이벤트`구조로 웹훅서비스를 구현했습니다.
 - notification 패키지로 알람 패키지를 분리했습니다.
 - 스케줄러에 의해 `ApplicationEventPublisher`를 활용 웹훅 전송 이벤트가 발생하도록 구현했습니다.
 - 이벤트가 발생하면 리스너에서 WebClient를 통해 디스코드 웹훅을 전송합니다.
+<details>
+<summary><strong> 알림 이벤트 리스너 CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+@Component
+public class NotificationEventListener {
+
+    @Value("${discord.webhook.baseurl}")
+    private String baseurl;
+
+    @EventListener
+    public void handleRecommendationNotificationEvent(ExpenditureRecommendationEvent event) {
+        executeDiscordWebHook(Notification.toRecommendationWebHook(event));
+    }
+
+    @EventListener
+    public void handleAnalyzeNotificationEvent(ExpenditureAnalyzeEvent event) {
+        executeDiscordWebHook(Notification.toAnalyzeWebHook(event));
+    }
+
+    private void executeDiscordWebHook(Notification notification) {
+        WebClient.create(baseurl)
+                .post()
+                .uri(notification.targetDiscordUrl())
+                .bodyValue(notification)
+                .retrieve()
+                .bodyToMono(String.class)
+                .subscribe();
+    }
+}
+````
+</div>
+</details>
 
 ### 지출 통계
 ---
@@ -751,6 +811,61 @@ public record ExpenditureRequest(
     - 오늘 기준 다른 `유저` 가 예산 대비 사용한 평균 비율 대비 나의 소비율
     - 오늘기준 다른 유저가 소비한 지출이 평균 50%(ex. 예산 100만원 중 50만원 소비중) 이고 나는 60% 이면 120%.
     - ex) `다른 사용자` 대비 120%
+<details>
+<summary><strong> 지출통계 서비스 레이어 CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+public ExpenditureStatisticsResponse getExpenditureStatistics(String username) {
+        User user = userRepository.findUserByUsername(username)
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
+
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startOfLastMonth = YearMonth.now().minusMonths(1).atDay(1).atStartOfDay();
+        LocalDateTime endOfLastMonth = now.minusMonths(1);
+        LocalDateTime startOfThisMonth = YearMonth.now().atDay(1).atStartOfDay();
+
+        // 지난 달 이 시점 대비 총액, 카테고리별 소비율 (얼마나 더 썼나?)
+        Long previousMonthTotalPrice = expenditureRepository.sumAmountByExpenditureDateTimeBetween(startOfLastMonth, endOfLastMonth);
+        Long thisMonthTotalPrice = expenditureRepository.sumAmountByExpenditureDateTimeBetween(startOfThisMonth, now);
+
+        BiFunction<Long, Long, String> executeRatingToStringFunction = (a, b) -> String.valueOf((b / a) * 100) + '%';
+
+        List<ConsumptionRateByCategoryStatistics> userBudgetConsumptionRateByCategoryCompareToPreviousMonth =
+                expenditureRepository.getExpenditureConsumptionRateByCategoryCompareToPreviousMonth();
+
+        List<ConsumptionRateByCategoryResponse> res = userBudgetConsumptionRateByCategoryCompareToPreviousMonth.stream()
+                .map(ConsumptionRateByCategoryResponse::toResponse)
+                .collect(Collectors.toList());
+        // 지난 요일 대비 소비율 (얼마나 더 썼나?)
+        // 현재 요일 & 현재 요일부터 7일 전의 요일
+        DayOfWeek nowDay = now.getDayOfWeek();
+        DayOfWeek previousDay = nowDay.minus(7);
+
+        // 현재 요일의 시작과 끝
+        LocalDateTime startOfToday = now.with(DayOfWeek.from(nowDay)).toLocalDate().atStartOfDay();
+        LocalDateTime endOfToday = now.with(DayOfWeek.from(nowDay)).toLocalDate().atTime(23, 59, 59, 59);
+
+        // 7일 전의 요일의 시작과 끝
+        LocalDateTime startOfPreviousDay = now.with(DayOfWeek.from(previousDay)).toLocalDate().atStartOfDay();
+        LocalDateTime endOfPreviousDay = now.with(DayOfWeek.from(previousDay)).toLocalDate().atTime(23, 59, 59, 59);
+
+        Long previousDayTotalPrice = expenditureRepository.sumAmountByExpenditureDateTimeBetween(startOfPreviousDay, endOfPreviousDay);
+        Long thisDayTotalPrice = expenditureRepository.sumAmountByExpenditureDateTimeBetween(startOfToday, endOfToday);
+
+        // 다른 유저 대비 소비율 (오늘 기준 다른 유저가 예산 대비 사용한 평균 비율 대비 나의 비율)
+        Long consumptionRateCompareByOtherUsers = userBudgetRepository.getUserBudgetConsumptionRateByUsers(user);
+        Long consumptionRateByUser = userBudgetRepository.getUserBudgetConsumptionRateByUser(user);
+        return new ExpenditureStatisticsResponse(
+                executeRatingToStringFunction.apply(previousMonthTotalPrice, thisMonthTotalPrice),
+                executeRatingToStringFunction.apply(previousDayTotalPrice, thisDayTotalPrice),
+                executeRatingToStringFunction.apply(consumptionRateCompareByOtherUsers, consumptionRateByUser),
+                res
+        );
+    }
+````
+</div>
+</details>
 
 ## 핵심문제 해결과정 및 전략
 
