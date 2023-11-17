@@ -171,7 +171,6 @@ public record UserSignupRequest(
 <div markdown="1">    
   
 - 인증과정에서 가장 중점을 뒀던 점은 시큐리티에서 제공하는 흐름과 기능을 최대한 맞춰서 이용하는 것이었습니다.
-- 이유는 시큐리티는 `보안에 전문적`인 라이브러리이기 때문에 저보다 보안에 훨씬 전문적이라고 생각하기 때문입니다.
 - 시큐리티의 `AuthenticationManager`와 `JwtAuthenticationFilter`를 통해 로그인을 수행하도록 했습니다.
 - JwtAuthenticationFilter 인증과정을 통해 로그인이 정상적이라면 `헤더`에 `AccessToken`과 `RefreshToken`을 발급합니다.
 </div>
@@ -235,7 +234,7 @@ public record UserSignupRequest(
 - Daily Pay, Daak 가계부(App Store)를 리서칭한 결과 `공통적으로 겹치는 카테고리`였고, 생산성을 위해 초기에는 큰 카테고리로 구현 & 니즈에 따라 세부 카테고리를 추가하는 방향으로 설정했습니다.
 2. 지출 카테고리 목록 조회 API
 - 카테고리 목록은 `서비스측에서 설정한 지출 카테고리`를 제공합니다. 따라서 DB에는 사측의 결정에 의해서만 카테고리가 업데이트됩니다.
-- 따라서 지출 카테고리 목록 조회 API는 초기에 조회결과를 Redis에 `캐싱`을 해두고 이후에는 캐싱된 결과를 조회하도록 하여 불필요한 DB I/O를 방지하도록 했습니다.
+- 따라서 지출 카테고리 목록 조회 API는 초기에 조회결과를 Redis에 `캐싱`을 해두고 이후에는 캐싱된 결과를 조회하도록 하여 `불필요한 DB I/O를 개선`했습니다.
 
 <details>
 <summary><strong> 카테고리 목록조회 Redis 캐싱 CODE - Click! </strong></summary>
@@ -256,13 +255,13 @@ public record UserSignupRequest(
 
 3. 유저 예산설정 API  
 - 유저예산 설정(POST): `월단위`로 `예산` 을 설정합니다. 예산은 `카테고리` 를 필수로 지정합니다.
-  - `유저예산 테이블`은 `유저`와 `지출카테고리`를 `FK`로 가지고 필요한 경우 JOIN해서 로직을 수행할 수 있도록 `연관관계`를 설정했습니다. 
+  - `유저예산 테이블`은 `유저`와 `지출카테고리`를 `FK`로 가지고 필요한 경우 JOIN해서 로직을 수행할 수 있도록 `1 : N 연관관계`를 설정했습니다. 
   - 예산은 액수, 년, 월을 요청받아 만들어집니다.
 - 유저예산 수정(PATCH): 사용자는 예산의 액수, 년, 월, 지출 카테고리를 `변경`할 수 있도록 구현했습니다.
 - 년, 월, 지출 카테고리를 변경했을 경우 `기존 예산과 중복`된다면?
-  - 유저예산 테이블에 설정년월을 의미하는 `plannedMonth`라는 datetime 데이터 타입의 컬럼을 만들었습니다.
+  - 유저예산 테이블에 설정년월을 의미하는 `plannedYearMonth`라는 datetime 데이터 타입의 컬럼을 만들었습니다.
   - plannedMonth는 ex)`2023-11-01 00:00:00.000000`로 DB에 저장됩니다.
-  - 예산을 변경하고 유저에게 이미 plannedMonth와 카테고리가 같은 설정예산이 있다면 `예외처리`합니다.
+  - 예산을 변경하고 유저에게 이미 plannedYearMonth와 카테고리가 같은 설정예산이 있다면 `예외처리`합니다.
 <details>
 <summary><strong> 기존 예산과 중복되는 경우 예외처리 CODE - Click! </strong></summary>
 <div markdown="1">       
@@ -285,7 +284,7 @@ public record UserSignupRequest(
 
     private void validateDuplicatedUserBudget(User user, UserBudget userBudget, ExpenditureCategory category) {
         // 카테고리와 설정년월이 같다면 -> 예외처리
-        if (isExistsUserBudgetByCategoryAndMonth(user, category, userBudget.getPlannedMonth())) {
+        if (isExistsUserBudgetByCategoryAndMonth(user, category, userBudget.getPlannedYearMonth())) {
             throw new ApiException(CustomErrorCode.DUPLICATED_USER_BUDGET);
         }
     }
