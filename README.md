@@ -80,16 +80,22 @@
 ### 사용자 회원가입 & 로그인 고려사항
 ---
 1. 회원가입 API
-- 서비스에 필요한 회원 정보를 잘 `모델링`했나?
-  - 본 서비스는 유저 고유 정보가 크게 사용되지 않아 간단히 구현되어 있습니다.
-  - 계정명(username): 구글 가이드라인에 따라 `6자이상 ~ 30자이하`로 설정하였습니다.
-  - 패스워드(password): 패스워드는 최소 `8글자이상` `숫자, 문자, 특수문자를 포함`하도록 설정하였습니다.
-  - 디스코드웹훅url(discordUrl): 알람서비스를 위한 `개인 디스코드 웹훅 url`입니다.
-    - 유저가 입력하지 않는 경우 기본값으로 `NONE`으로 DB에 저장되며 이후 알람서비스에서 NONE이 아니면서 알람설정을한 유저에게만 알람서비스를 제공합니다.
-    - DB에 null로 넣지 않은 이유는 기본적으로 MySQL의 null은 `unknown` 이며 비교/논리연산시 결과로 true, false, unknown을 가지기때문에 예상하지 못한 연산결과를 피하고 싶었습니다. 
-  - 알람수신여부(subscribeNotification): 알람서비스 수신 여부
-    - 서비스에 디스코드 웹훅을 통한 `알람서비스`가 포함되어있습니다.
-    - 해당 수신여부를 꼭 설정해야 불필요한 DB스캔 및 사용자 경험을 개선시킬수 있다고 생각했습니다.
+<details>
+<summary><strong> 서비스에 필요한 회원 정보를 잘 모델링했나? - Click! </strong></summary>
+<div markdown="1">
+  
+- 본 서비스는 유저 고유 정보가 크게 사용되지 않아 간단히 구현되어 있습니다.
+- 계정명(username): 구글 가이드라인에 따라 `6자이상 ~ 30자이하`로 설정하였습니다.
+- 패스워드(password): 패스워드는 최소 `8글자이상` `숫자, 문자, 특수문자를 포함`하도록 설정하였습니다.
+- 디스코드웹훅url(discordUrl): 알람서비스를 위한 `개인 디스코드 웹훅 url`입니다.
+  - 유저가 입력하지 않는 경우 기본값으로 `NONE`으로 DB에 저장되며 이후 알람서비스에서 NONE이 아니면서 알람설정을한 유저에게만 알람서비스를 제공합니다.
+  - DB에 null로 넣지 않은 이유는 기본적으로 MySQL의 null은 `unknown` 이며 비교/논리연산시 결과로 true, false, unknown을 가지기때문에 예상하지 못한 연산결과를 피하고 싶었습니다. 
+- 알람수신여부(subscribeNotification): 알람서비스 수신 여부
+  - 서비스에 디스코드 웹훅을 통한 `알람서비스`가 포함되어있습니다.
+  - 해당 수신여부를 꼭 설정해야 불필요한 DB스캔 및 사용자 경험을 개선시킬수 있다고 생각했습니다.
+</div>
+</details>
+
 <details>
 <summary><strong> 회원가입 요청 Validation CODE - Click! </strong></summary>
 <div markdown="1">       
@@ -124,10 +130,19 @@ public record UserSignupRequest(
 </div>
 </details>
 
-- 패스워드는 잘 `암호화` 되어있나?
-  - 시큐리티에서 제공하는 `PasswordEncoderFactories`의 createDelegatingPasswordEncoder 메서드를 통해 인코더를 빈으로 등록했습니다.
-    - 이유는 인증, 인가에 대해서는 최대한 시큐리티에서 제공하는 흐름대로 구현하는것이 `안정성`면에서 좋다고 생각했습니다.
-  - 시큐리티에 위임하는 인코더를 통해 `패스워드를 암호화`하고 로그인시에도 시큐리티가 인증절차에서 해당 인코더로 패스워드 검증을 수행합니다.
+<details>
+<summary><strong> 패스워드는 잘 암호화 되어있나? - Click! </strong></summary>
+<div markdown="1">    
+  
+- 인증과정에서 가장 중점을 뒀던 점은 시큐리티에서 제공하는 흐름과 기능을 최대한 맞춰서 이용하는 것이었습니다.
+- 이유는 시큐리티는 `보안에 전문적`인 라이브러리이기 때문에 `보안성`을 기본적으로 보장해주기 때문입니다.
+- 시큐리티의 `AuthenticationManager`와 `JwtAuthenticationFilter`를 통해 로그인을 수행하도록 했습니다.
+- JwtAuthenticationFilter 인증과정을 통해 로그인이 정상적이라면 `헤더`에 `AccessToken`과 `RefreshToken`을 발급합니다.
+- 시큐리티에서 제공하는 `PasswordEncoderFactories`의 createDelegatingPasswordEncoder 메서드를 통해 인코더를 빈으로 등록했습니다.
+  - 인증, 인가에 대해서는 최대한 시큐리티에서 제공하는 흐름대로 구현하는것이 `안정성`면에서 좋다고 생각했습니다.
+- 시큐리티에 위임하는 인코더를 통해 `패스워드를 암호화`하고 로그인시에도 시큐리티가 인증절차에서 해당 인코더로 패스워드 검증을 수행합니다.
+</div>
+</details>
 
 <details>
 <summary><strong> 패스워드 인코딩 CODE - Click! </strong></summary>
@@ -151,11 +166,17 @@ public record UserSignupRequest(
 </details>
 
 2. 로그인 API
-- 로그인시 `JWT`가 잘 발급이 되나?
-  - 인증과정에서 가장 중점을 뒀던 점은 시큐리티에서 제공하는 흐름과 기능을 최대한 맞춰서 이용하는 것이었습니다.
-  - 이유는 시큐리티는 `보안에 전문적`인 라이브러리이기 때문에 저보다 보안에 훨씬 전문적이라고 생각하기 때문입니다.
-  - 시큐리티의 `AuthenticationManager`와 `JwtAuthenticationFilter`를 통해 로그인을 수행하도록 했습니다.
-  - JwtAuthenticationFilter 인증과정을 통해 로그인이 정상적이라면 `헤더`에 `AccessToken`과 `RefreshToken`을 발급합니다.
+<details>
+<summary><strong> 로그인시 JWT가 잘 발급이 되나? - Click! </strong></summary>
+<div markdown="1">    
+  
+- 인증과정에서 가장 중점을 뒀던 점은 시큐리티에서 제공하는 흐름과 기능을 최대한 맞춰서 이용하는 것이었습니다.
+- 이유는 시큐리티는 `보안에 전문적`인 라이브러리이기 때문에 저보다 보안에 훨씬 전문적이라고 생각하기 때문입니다.
+- 시큐리티의 `AuthenticationManager`와 `JwtAuthenticationFilter`를 통해 로그인을 수행하도록 했습니다.
+- JwtAuthenticationFilter 인증과정을 통해 로그인이 정상적이라면 `헤더`에 `AccessToken`과 `RefreshToken`을 발급합니다.
+</div>
+</details>
+
 <details>
 <summary><strong> AccessToken과 RefreshToken 발급 CODE - Click! </strong></summary>
 <div markdown="1">       
@@ -234,7 +255,7 @@ public record UserSignupRequest(
 </details>
 
 3. 유저 예산설정 API  
-- 유저예산 설정(POST): 월단위로 `예산` 을 설정합니다. 예산은 `카테고리` 를 필수로 지정합니다.
+- 유저예산 설정(POST): `월단위`로 `예산` 을 설정합니다. 예산은 `카테고리` 를 필수로 지정합니다.
   - `유저예산 테이블`은 `유저`와 `지출카테고리`를 `FK`로 가지고 필요한 경우 JOIN해서 로직을 수행할 수 있도록 `연관관계`를 설정했습니다. 
   - 예산은 액수, 년, 월을 요청받아 만들어집니다.
 - 유저예산 수정(PATCH): 사용자는 예산의 액수, 년, 월, 지출 카테고리를 `변경`할 수 있도록 구현했습니다.
@@ -378,14 +399,46 @@ public record UserSignupRequest(
 ### 지출기록 고려사항
 ---
 1. 지출
-- 서비스에 필요한 지출 정보를 잘 `모델링`했나?
-  - `지출 일시`, `지출 금액`, `카테고리` 와 `메모` 를 입력하여 생성합니다.
-  - 지출금액(amount): 지출액은 1보다 작을수 없도록 설정했습니다.
-  - 지출일시(expenditureDateTime): 지출일시로 `yyyy-MM-dd HH:00` 패턴으로 요청을 받고 DB에 `datetime`으로 저장합니다.
-    - 프론트에서 `yyyy-MM-dd HH:00`로 `지출일시`를 생성해서 보낸다고 가정했습니다. 
-  - 메모(memo): 지출액에 대한 메모로 `간단한 메모`임의 특성상 `100자 이하`로 제한을 두었습니다.
-  - 지출상태(expenditureStatus): 서비스에 `지출을 합계에서 제외`하는 API가 있어 `ENUM`으로 `상태`를 정의하였습니다. 
-  - `지출 테이블`은 `유저`와 `지출카테고리`를 `FK`로 가지고 필요한 경우 `JOIN`해서 로직을 수행할 수 있도록 `연관관계`를 설정했습니다.
+<details>
+<summary><strong> 서비스에 필요한 지출 정보를 잘 모델링했나? - Click! </strong></summary>
+<div markdown="1">       
+
+- `지출 일시`, `지출 금액`, `카테고리` 와 `메모` 를 입력하여 생성합니다.
+- 지출금액(amount): 지출액은 1보다 작을수 없도록 설정했습니다.
+- 지출일시(expenditureDateTime): 지출일시로 `yyyy-MM-dd HH:00` 패턴으로 요청을 받고 DB에 `datetime`으로 저장합니다.
+  - 프론트에서 `yyyy-MM-dd HH:00`로 `지출일시`를 생성해서 보낸다고 가정했습니다. 
+- 메모(memo): 지출액에 대한 메모로 `간단한 메모`임의 특성상 `100자 이하`로 제한을 두었습니다.
+- 지출상태(expenditureStatus): 서비스에 `지출을 합계에서 제외`하는 API가 있어 `ENUM`으로 `상태`를 정의하였습니다. 
+- `지출 테이블`은 `유저`와 `지출카테고리`를 `FK`로 가지고 필요한 경우 `JOIN`해서 로직을 수행할 수 있도록 `연관관계`를 설정했습니다.
+
+</div>
+</details>
+
+<details>
+<summary><strong> 지출요청 Validation CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+@Schema(description = "지출 요청 DTO")
+public record ExpenditureRequest(
+        //'yyyy-MM-dd HH:00' 형식 1차 validation -> ssss-wm-ei 2m:00 으로
+        @Schema(description = "지출 일시", example = "2023-11-14 19:30")
+        @Pattern(regexp = "\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:00", message = "yyyy-MM-dd HH:00 형식이어야 합니다.")
+        String dateTime,
+
+        @Schema(description = "지출액", example = "15000")
+        @Min(value = 1, message = "지출액은 1보다 작을수 없습니다.")
+        Long amount,
+
+        @Schema(description = "메모", example = "점심")
+        @Size(max = 100, message = "메모는 100자 이하로 작성되어야 합니다.")
+        @NotNull(message = "메모는 null 일수 없습니다.")
+        String memo
+) {
+}
+````
+</div>
+</details>
 
 2. 지출 CRUD
 - 지출을 `생성`, `수정`, `읽기(상세)`, `읽기(목록)`, `삭제` , `합계제외` 할 수 있습니다.
@@ -403,6 +456,30 @@ public record UserSignupRequest(
 - 지출의 `상세 정보`를 모두 반환합니다.
 #### 지출목록 읽기 API(GET)
 - 하나의 엔드포인트에서 `Parameter`에 따라 `필터`를 적용한 결과를 조회할 수 있도록 구현했습니다.
+<details>
+<summary><strong> 지출목록 읽기 엔드포인트 CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+    @Operation(summary = "지출 목록조회 API", description = "필수적으로 기간으로 조회, 모든 내용의 지출 합계, 카테고리별 지출 합계 반환 [특정 카테고리 ID 포함시 해당 카테고리로만 조회]")
+    @GetMapping
+    public ResponseEntity<ExpenditureByUserResponse> getExpendituresByUser(@AuthenticationPrincipal UserPrincipal userPrincipal,
+                                                                           @Parameter(description = "시작일", required = true)
+                                                                           @RequestParam(value = "start") @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate start,
+                                                                           @Parameter(description = "종료일", required = true)
+                                                                           @RequestParam(value = "end") @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate end,
+                                                                           @Parameter(description = "특정 카테고리 ID")
+                                                                           @RequestParam(value = "categoryId", required = false) Long categoryId,
+                                                                           @Parameter(description = "최소, 최대지출 포함여부")
+                                                                           @RequestParam(value = "minAndMax", required = false) Boolean hasMinAndMax) {
+        ExpenditureByUserRequest request = new ExpenditureByUserRequest(start, end, categoryId, hasMinAndMax);
+        ExpenditureByUserResponse res = expenditureService.getExpendituresByUser(userPrincipal.getUsername(), request);
+        return ResponseEntity.ok().body(res);
+    }
+````
+</div>
+</details>
+
 - `읽기(목록)` 은 아래 기능을 가지고 있습니다.
   - 필수적으로 `기간` 으로 조회 합니다.
   - `yyyy-MM-dd` 패턴의 LocalDate를 RequestParam(required=true)로 받는 `start, end`로 기간을 설정합니다.
@@ -411,14 +488,77 @@ public record UserSignupRequest(
   - `최대 30일`로 제한을 두었고 기간이 30일이 넘는다면 `예외처리`합니다.
   - 종료일이 시작일보다 전이라면 `예외처리`합니다.
   - 또한 시작일이 `서비스 시작일 전`이라면 `예외처리`하여 예상하지 못한 결과를 예방했습니다.
-  - 해당 기간 조회된 모든 내용의 `지출 합계` , `카테고리 별 지출 합계` 를 같이 반환합니다. 
+  - 해당 기간 조회된 모든 내용의 `지출 합계` , `카테고리 별 지출 합계` 를 같이 반환합니다.
+  - 유효성 검사로직은 `Fail Fast`를 위해 RequestParam을 받아 생성되는 `DTO객체 내부`에서 하도록 캡슐화했습니다.
+<details>
+  <summary><strong> 유저 지출 요청 Validation CODE - Click! </strong></summary>
+  <div markdown="1">       
+
+  ````java
+      public ExpenditureByUserRequest(LocalDate start, LocalDate end, Long categoryId, Boolean hasMinAndMax) {
+          this.start = start.atStartOfDay();
+          this.end = end.atStartOfDay();
+          this.categoryId = categoryId;
+          this.hasMinAndMax = Objects.requireNonNullElse(hasMinAndMax, false);
+          validateDate(start, end);
+      }
+
+      private void validateDate(LocalDate start, LocalDate end) {
+          LocalDate dayOfServiceStart = LocalDate.of(2023, Month.JANUARY, 2);
+          if (start.isBefore(dayOfServiceStart) || end.isBefore(dayOfServiceStart)) {
+              throw new ApiException(CustomErrorCode.INVALID_PARAMETER_DATE_NONE_SERVICE_DAY);
+          }
+          if (start.isAfter(end)) {
+              throw new ApiException(CustomErrorCode.INVALID_PARAMETER_START_DATE);
+          }
+  
+          long period = ChronoUnit.DAYS.between(start, end);
+          if (period >= 30) {
+              throw new ApiException(CustomErrorCode.INVALID_EXPENDITURES_GET_DURATION);
+          }
+      }
+  ````
+</div>
+</details>
+
 - 특정 `카테고리`로만 조회.
   - RequestParam(required=false)로 받는 `categoryId`가 있다면 `특정 카테고리`로만 조회합니다.
+  - Querydsl을 사용 카테고리 ID가 있다면 특정 카테고리로만 결과 반환 없다면 전체 카테고리를 모두 반환하도록 구현했습니다.
+<details>
+  <summary><strong> 카테고리 & 지출금액 통계 쿼리 CODE - Click! </strong></summary>
+  <div markdown="1">       
+
+  ````java
+      @Override
+      public List<ExpenditureCategoryAndAmountResponse> statisticExpenditureCategoryAndAmount(User user, ExpenditureByUserRequest request) {
+        if (request.getCategoryId() != null) {
+            return queryFactory.select(new QExpenditureCategoryAndAmountResponse(expenditureCategory.id, expenditureCategory.name, expenditure.amount.sum()))
+                    .from(expenditure)
+                    .where(expenditure.user.eq(user)
+                            .and(expenditureCategory.id.eq(request.getCategoryId()))
+                            .and(expenditure.expenditureDateTime.between(request.getStart(), request.getEnd().plusDays(1L)))
+                            .and(expenditure.expenditureStatus.eq(ExpenditureStatus.INCLUDED)))
+                    .fetch();
+        }
+        return queryFactory.select(new QExpenditureCategoryAndAmountResponse(expenditureCategory.id, expenditureCategory.name, expenditure.amount.sum()))
+                .from(expenditure)
+                .where(expenditure.user.eq(user)
+                        .and(expenditure.expenditureDateTime.between(request.getStart(), request.getEnd().plusDays(1L)))
+                        .and(expenditure.expenditureStatus.eq(ExpenditureStatus.INCLUDED)))
+                .groupBy(expenditureCategory.id)
+                .fetch();
+      }
+  ````
+</div>
+</details>
+
 - `최소` , `최대` 금액으로 조회.
-  - RequestParam(required=false)로 받는 `hasMinAndMax(Boolean)`가 true라면 `최소, 최대금액 정보`를 넣어줍니다. 
+  - RequestParam(required=false)로 받는 `hasMinAndMax(Boolean)`가 true라면 `최소, 최대금액 정보`를 넣어줍니다.
+
 #### 지출삭제 API(DELETE)
 - 대상 지출ID를 `PathVariable`로 받도록 설계했습니다.
 - 소프트 삭제가 아닌 완전한 삭제입니다.
+ 
 #### 지출합계 제외 API(PATCH)
 - 대상 지출ID를 `PathVariable`로 받도록 설계했습니다.
 - ExpenditureStatus를 `EXCLUDED`로 바꾸어, 지출합계에서 제외합니다.
