@@ -5,8 +5,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
-import java.time.Year;
-
 @Schema(description = "유저예산 수정 요청 DTO")
 public record UserBudgetUpdateRequest(
 
@@ -31,9 +29,6 @@ public record UserBudgetUpdateRequest(
                                    @Min(1) @Max(12) Integer month,
                                    @NotBlank Long categoryId) {
         this.amount = amount;
-        if (year < Year.now().getValue()) {
-            throw new IllegalArgumentException("year can't before now year");
-        }
         this.year = year;
         this.month = month;
         this.categoryId = categoryId;
