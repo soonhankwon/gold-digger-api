@@ -60,7 +60,7 @@
 <br/>
 
 ## erd
-![erd](https://github.com/soonhankwon/gold-digger-api/assets/113872320/52ad476b-0ee1-43c7-9e66-54ef51dc4126)
+![erd](https://github.com/soonhankwon/gold-digger-api/assets/113872320/780c619b-3edb-460d-bda5-23ce0ab916a8)
 <br/>
 
 ## 프로젝트 진행 및 이슈관리
