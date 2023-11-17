@@ -483,13 +483,19 @@ public record ExpenditureRequest(
 - `읽기(목록)` 은 아래 기능을 가지고 있습니다.
   - 필수적으로 `기간` 으로 조회 합니다.
   - `yyyy-MM-dd` 패턴의 LocalDate를 RequestParam(required=true)로 받는 `start, end`로 기간을 설정합니다.
-- `기간`에 제한을 두었는지, 시작일과 종료일이 논리적으로 맞는지?
-  - 기간에 `제한`을 두지 않는다면 DB를 풀스캔할 수도 있어 서버에 치명적인 영향을 줄 수 있다고 생각했습니다.
-  - `최대 30일`로 제한을 두었고 기간이 30일이 넘는다면 `예외처리`합니다.
-  - 종료일이 시작일보다 전이라면 `예외처리`합니다.
-  - 또한 시작일이 `서비스 시작일 전`이라면 `예외처리`하여 예상하지 못한 결과를 예방했습니다.
-  - 해당 기간 조회된 모든 내용의 `지출 합계` , `카테고리 별 지출 합계` 를 같이 반환합니다.
-  - 유효성 검사로직은 `Fail Fast`를 위해 RequestParam을 받아 생성되는 `DTO객체 내부`에서 하도록 캡슐화했습니다.
+<details>
+<summary><strong> 기간에 제한을 두었는지, 시작일과 종료일이 논리적으로 맞는지? - Click! </strong></summary>
+<div markdown="1">       
+
+- 기간에 `제한`을 두지 않는다면 DB를 풀스캔할 수도 있어 서버에 치명적인 영향을 줄 수 있다고 생각했습니다.
+- `최대 30일`로 제한을 두었고 기간이 30일이 넘는다면 `예외처리`합니다.
+- 종료일이 시작일보다 전이라면 `예외처리`합니다.
+- 또한 시작일이 `서비스 시작일 전`이라면 `예외처리`하여 예상하지 못한 결과를 예방했습니다.
+- 해당 기간 조회된 모든 내용의 `지출 합계` , `카테고리 별 지출 합계` 를 같이 반환합니다.
+- 유효성 검사로직은 `Fail Fast`를 위해 RequestParam을 받아 생성되는 `DTO객체 내부`에서 하도록 캡슐화했습니다.
+</div>
+</details>
+  
 <details>
   <summary><strong> 유저 지출 요청 Validation CODE - Click! </strong></summary>
   <div markdown="1">       
@@ -525,8 +531,8 @@ public record ExpenditureRequest(
   - RequestParam(required=false)로 받는 `categoryId`가 있다면 `특정 카테고리`로만 조회합니다.
   - Querydsl을 사용 카테고리 ID가 있다면 특정 카테고리로만 결과 반환 없다면 전체 카테고리를 모두 반환하도록 구현했습니다.
 <details>
-  <summary><strong> 카테고리 & 지출금액 통계 쿼리 CODE - Click! </strong></summary>
-  <div markdown="1">       
+<summary><strong> 카테고리 & 지출금액 통계 쿼리 CODE - Click! </strong></summary>
+<div markdown="1">       
 
   ````java
       @Override
@@ -568,8 +574,43 @@ public record ExpenditureRequest(
 1. 오늘 지출 추천 API
 - 설정한 월별 예산을 만족하기 위해 `오늘 지출 가능한 금액`을 `총액` 과 `카테고리 별 금액`으로 제공합니다.
   - 오늘 지출 가능한 금액의 `총액`은 `카테고리 별 지출 가능 금액의 합` 이기 때문에 `지출 가능한 카테고리 별 금액`만 DB를 조회하면 되겠다고 생각했습니다. 
-  - 이번달의 카테고리 별 설정예산에서 `이번달의 어제까지의 카테고리 별 지출`을 빼주는 쿼리를 Querydsl을 활용해 구현했습니다.
-  - Querydsl의 JPAExpressions(Subquery)와 groupBy를 사용해서 카테고리 별 지출을 구해줍니다. 
+  - 유저의 이번달의 카테고리 별 설정예산에서 `이번달의 어제까지의 카테고리 별 지출`을 빼주는 쿼리를 Querydsl을 활용해 구현했습니다.
+  - Querydsl의 `JPAExpressions(Subquery)`와 `groupBy`, `where`를 주로 사용합니다.
+<details>
+<summary><strong> 카테고리별 오늘 유저의 사용가능 예산 조회 쿼리 CODE - Click! </strong></summary>
+<div markdown="1">       
+
+  ````java
+      @Override
+      public List<UserBudgetCategoryAndAvailableExpenditure> getAvailableUserBudgetByCategoryByToday(User user) {
+        LocalDateTime startOfMonth = YearMonth.now().atDay(1).atStartOfDay();
+        LocalDateTime yesterday = LocalDateTime.now().minusDays(1);
+        LocalDateTime endOfThisMonth = YearMonth.now().atEndOfMonth().atTime(23, 59, 59);
+
+        long totalDaysThisMonth = ChronoUnit.DAYS.between(startOfMonth, endOfThisMonth) + 1;
+        long daysPassed = ChronoUnit.DAYS.between(startOfMonth, yesterday) + 1;
+        long remainingDays = totalDaysThisMonth - daysPassed;
+
+        return queryFactory.select(new QUserBudgetCategoryAndAvailableExpenditure(expenditureCategory.id, expenditureCategory.name,
+                        (userBudget.amount.sum().subtract(
+                                JPAExpressions.select(expenditure.amount.sum())
+                                        .from(expenditure)
+                                        .where(expenditure.expenditureCategory.eq(expenditureCategory)
+                                                .and(expenditure.user.eq(user))
+                                                .and(expenditure.expenditureDateTime
+                                                        .between(startOfMonth, yesterday))))
+                        ).divide(remainingDays > 0 ? remainingDays : 1L)))
+                .from(userBudget)
+                .where(userBudget.user.eq(user)
+                        .and(userBudget.plannedMonth.eq(startOfMonth)))
+                .groupBy(expenditureCategory.id)
+                .orderBy(expenditureCategory.id.asc())
+                .fetch();
+    }
+  ````
+</div>
+</details>
+
 - 고려사항 1. 앞선 일자에서 과다 소비하였다 해서 오늘 예산을 극히 줄이는것이 아니라, `이후 일자에 부담을 분배`한다.
   - 위의 `Subquery`에서 `이번달의 남은 일자`로 나눠주어 카테고리 별 지출 가능 금액을 조회하도록 구현했습니다.
 - 고려사항 2. 기간 전체 예산을 초과 하더라도 `0원 또는 음수` 의 예산을 추천받지 않아야 한다.
@@ -577,17 +618,113 @@ public record ExpenditureRequest(
   - 위의 결과에서는 0 또는 음수 결과를 가지는 결과를 가져옵니다. 이 결과를 `분석`해서 메세지 및 적정 최소금액을 `추천`하기위해서 `예산 컨설팅 서비스`를 `모듈화`했습니다.
   - budget_consulting 패키지의 `BudgetConsultingService`에서 `최소 적정 금액`과 `예산 분석 메세지`를 제공하도록 구현했습니다.
   - 구체적인 추천 로직을 해당 서비스에 구현함으로써 `서비스 레이어 코드 복잡도`를 낮추고 기능구현에 집중할 수 있었습니다.
+
+<details>
+<summary><strong> 오늘 지출 추천 서비스레이어 흐름 CODE - Click! </strong></summary>
+<div markdown="1">  
+
+  ````java
+      public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByToday(String username) {
+        User user = userRepository.findUserByUsername(username)
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
+
+        // 이번달의 어제까지의 카테고리별 지출을 예산에 반영해야한다.
+        // 유저의 오늘 지출 가능한 금액 총액, 카테고리별 금액 조회
+        List<UserBudgetCategoryAndAvailableExpenditure> availableUserBudgetByCategoryByToday = userBudgetRepository.getAvailableUserBudgetByCategoryByToday(user);
+
+        Long realAvailableExpenditure = availableUserBudgetByCategoryByToday.stream()
+                .mapToLong(UserBudgetCategoryAndAvailableExpenditure::availableExpenditure).sum();
+        // 예산 컨설팅 서비스에서 실제 예산 대비 지출액으로 구체적인 분석 담당
+        String message = budgetConsultingService.analyzeBudgetStatus(realAvailableExpenditure);
+
+        // 지속적인 소비 습관을 생성하기 위한 서비스이므로 예산을 초과하더라도 적정한 금액을 추천
+        List<UserBudgetCategoryAndAvailableExpenditureRecommendation> res =
+                availableUserBudgetByCategoryByToday.stream()
+                        .map(i -> {
+                            if (i.availableExpenditure() < 0) {
+                                Long minimumAvailableExpenditure = budgetConsultingService.getMinimumAvailableExpenditure(i);
+                                return UserBudgetCategoryAndAvailableExpenditureRecommendation.toMinimumRecommendation(i, minimumAvailableExpenditure);
+                            }
+                            return UserBudgetCategoryAndAvailableExpenditureRecommendation.toRecommendation(i);
+                        })
+                        .toList();
+
+        Long availableTotalExpenditure = res.stream()
+                .mapToLong(UserBudgetCategoryAndAvailableExpenditureRecommendation::availableExpenditure)
+                .sum();
+
+        return new ExpenditureByTodayRecommendationResponse(
+                availableTotalExpenditure,
+                message,
+                res
+        );
+    }
+  ````
+</div>
+</details>
+
 2. 오늘 지출 안내 API
 - `오늘 지출한 내용`을 `총액` 과 `카테고리 별 금액`을 알려줍니다.
 - 데이터를 처리할때 최대한 DB/IO를 줄일 수 있도록 `자바로직`을 최대한 활용하고자 했습니다.
 - 유저의 `카테고리별 오늘 지출 통계 결과`를 `between`, `groupBy`를 통해 조회하도록 구현했습니다.
-- 카테고리별 지출의 총합은 `카테고리별 오늘 지출 통계`의 합을 `stream`을 활용하여 구했습니다. 
+- 카테고리별 지출의 총합은 `카테고리별 오늘 지출 통계`의 합을 `stream`을 활용하여 구했습니다.
 - `월별`설정한 예산 기준 `카테고리 별` 통계 제공
     - 일자기준 오늘 `적정 금액` : 오늘 기준 사용했으면 적절했을 금액
     - 적정 금액은 유저의 `이번달 카테고리별 설정예산`을 모두 조회하고 `예산의 총합`에서 `이번달의 날짜`로 나누어줍니다.
     - 일자기준 오늘 `지출 금액` : 오늘 기준 사용한 금액
     - `위험도` : 카테고리 별 적정 금액, 지출금액의 차이를 위험도로 나타내며 %(퍼센테이지) 입니다.
         - ex) 오늘 사용하면 적당한 금액 10,000원/ 사용한 금액 20,000원 이면 200%
+
+<details>
+<summary><strong> 오늘 지출 안내 서비스레이어 흐름 CODE - Click! </strong></summary>
+<div markdown="1"> 
+  
+  ````java
+      public ExpenditureByTodayResponse getExpenditureByToday(String username) {
+        User user = userRepository.findUserByUsername(username)
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
+        // 유저의 카테고리별 오늘 지출 통계 결과를 가져온다.
+        List<ExpenditureCategoryAndAmountResponse> expenditureCategoryAndAmountResponses = expenditureRepository.statisticExpenditureCategoryAndAmountByTodayByUser(user);
+
+        // 유저의 오늘 지출 총합
+        Long sum = expenditureCategoryAndAmountResponses.stream()
+                .mapToLong(ExpenditureCategoryAndAmountResponse::sum)
+                .sum();
+
+        // 유저의 이번달 설정 예산을 가져온다.
+        List<UserBudget> userBudgetsInNowMonth = userBudgetRepository.findUserBudgetsByUserAndPlannedMonth(user, YearMonth.now().atDay(1).atStartOfDay());
+
+        // 유저의 이번달 설정 예산 총합
+        long plannedBudget = userBudgetsInNowMonth
+                .stream()
+                .mapToLong(UserBudget::getAmount)
+                .sum();
+
+        // 유저의 이번달 하루 적절 지출 금액 (총 예산 기준)
+        Long reasonableExpenditurePerDay = plannedBudget / YearMonth.now().lengthOfMonth();
+
+        // 기존 카테고리별 통계자료에 일자기준 오늘 적정 지출 금액과 위험도를 분석해서 응답을 만든다.
+        // 유저 설정 예산이 없는 경우 0, 0 분석결과를 반환한다.
+        List<ExpenditureByTodayByCategoryStatisticsResponse> expenditureByTodayByCategoryStatisticsResponses = new ArrayList<>();
+        expenditureCategoryAndAmountResponses.stream()
+                .map(i -> {
+                    Optional<UserBudget> optionalUserBudget =
+                            userBudgetRepository.findUserBudgetByUserAndExpenditureCategory_IdAndPlannedMonth(user, i.categoryId(), YearMonth.now().atDay(1).atStartOfDay());
+                    return optionalUserBudget.map(userBudget ->
+                                    ExpenditureByTodayByCategoryStatisticsResponse.toResponse(i, userBudget.analyzeReasonableExpenditureSumAndRisk(i.sum())))
+                            .orElseGet(() -> ExpenditureByTodayByCategoryStatisticsResponse.toResponse(i, new ExpenditureAnalyze(0L, 0L)));
+                })
+                .forEach(expenditureByTodayByCategoryStatisticsResponses::add);
+
+        return new ExpenditureByTodayResponse(
+                sum,
+                reasonableExpenditurePerDay,
+                expenditureByTodayByCategoryStatisticsResponses);
+    }
+  ````
+</div>
+</details>
+
 - 적정 금액과 위험도를 분석하는 로직은 어디에?
   - 유저예산에 대한 `프로퍼티`는 `유저예산 객체`가 가지고 있기 때문에 유저예산에 메세지를 보내 `적정 금액`과 `위험도`를 `분석`하도록 했습니다.
 3. 지출 추천 및 안내 `디스코드 웹훅` 전송
