@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 @Schema(description = "지출 요청 DTO")
 public record ExpenditureRequest(
@@ -17,6 +18,7 @@ public record ExpenditureRequest(
         Long amount,
 
         @Schema(description = "메모", example = "점심")
+        @Size(max = 100, message = "메모는 100자 이하로 작성되어야 합니다.")
         @NotNull(message = "메모는 null 일수 없습니다.")
         String memo
 ) {

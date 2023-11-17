@@ -5,6 +5,7 @@ import dev.golddiggerapi.exception.detail.FieldError;
 import jakarta.validation.ConstraintViolation;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.BindingResult;
 
 import java.util.List;
 import java.util.Set;
@@ -12,9 +13,9 @@ import java.util.Set;
 @Getter
 public class ErrorResponse {
 
-    private HttpStatus status;
+    private final HttpStatus status;
 
-    private String message;
+    private final String message;
 
     private List<FieldError> fieldErrors;
 
@@ -25,7 +26,13 @@ public class ErrorResponse {
         this.message = message;
     }
 
+    public static ErrorResponse of(BindingResult bindingResult) {
+        return new ErrorResponse(FieldError.of(bindingResult), null);
+    }
+
     private ErrorResponse(List<FieldError> fieldErrors, List<ConstraintViolationError> violationErrors) {
+        this.status = HttpStatus.BAD_REQUEST;
+        this.message = HttpStatus.BAD_REQUEST.getReasonPhrase();
         this.fieldErrors = fieldErrors;
         this.violationErrors = violationErrors;
     }

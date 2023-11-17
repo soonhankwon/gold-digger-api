@@ -16,7 +16,7 @@ import java.time.*;
 @Table(name = "user_budget", indexes = {
         @Index(name = "fk_ub_user_idx", columnList = "user_id"),
         @Index(name = "fk_ub_expenditure_category_idx", columnList = "expenditure_category_id"),
-        @Index(name = "idx_planned_month_idx", columnList = "planned_month")
+        @Index(name = "idx_planned_year_month_idx", columnList = "planned_month")
 })
 public class UserBudget {
 
@@ -26,8 +26,8 @@ public class UserBudget {
 
     private Long amount;
 
-    @Column(name = "planned_month")
-    private LocalDateTime plannedMonth;
+    @Column(name = "planned_year_month")
+    private LocalDateTime plannedYearMonth;
 
     private LocalDateTime createdAt;
 
@@ -46,7 +46,7 @@ public class UserBudget {
         this.amount = request.amount();
         Integer year = request.year();
         Month month = Month.of(request.month());
-        this.plannedMonth = YearMonth.of(year, month).atDay(1).atStartOfDay();
+        this.plannedYearMonth = YearMonth.of(year, month).atDay(1).atStartOfDay();
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
         this.user = user;
@@ -55,7 +55,7 @@ public class UserBudget {
 
     public UserBudget(User user, ExpenditureCategory category, Long amount) {
         this.amount = amount;
-        this.plannedMonth = YearMonth.now().atDay(1).atStartOfDay();
+        this.plannedYearMonth = YearMonth.now().atDay(1).atStartOfDay();
         this.user = user;
         this.expenditureCategory = category;
         this.createdAt = LocalDateTime.now();
@@ -66,7 +66,7 @@ public class UserBudget {
         this.amount = request.amount();
         Integer year = request.year();
         Month month = Month.of(request.month());
-        this.plannedMonth = YearMonth.of(year, month).atDay(1).atStartOfDay();
+        this.plannedYearMonth = YearMonth.of(year, month).atDay(1).atStartOfDay();
         this.updatedAt = LocalDateTime.now();
         // Input 카테고리가 같지않다면 수정합니다.
         if (!isInputCategorySameAsThisCategory(category)) {

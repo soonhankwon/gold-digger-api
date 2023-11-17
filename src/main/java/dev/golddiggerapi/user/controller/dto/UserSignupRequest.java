@@ -2,6 +2,7 @@ package dev.golddiggerapi.user.controller.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -22,8 +23,8 @@ public record UserSignupRequest(
         @Schema(description = "패스워드", example = "password1!")
         String password,
 
-        @NotBlank(message = "알람수신여부는 true 또는 false 여야 합니다.")
         @Schema(description = "알람수신여부", example = "true")
+        @NotNull(message = "알람수신여부는 true 또는 false 여야 합니다.")
         Boolean subscribeNotification,
 
         @Schema(description = "디스코드url", example = "/api/webhooks/...")
