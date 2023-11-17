@@ -69,7 +69,7 @@ public class UserBudgetRepositoryCustomImpl implements UserBudgetRepositoryCusto
                         ).divide(remainingDays > 0 ? remainingDays : 1L)))
                 .from(userBudget)
                 .where(userBudget.user.eq(user)
-                        .and(userBudget.plannedMonth.eq(startOfMonth)))
+                        .and(userBudget.plannedYearMonth.eq(startOfMonth)))
                 .groupBy(expenditureCategory.id)
                 .orderBy(expenditureCategory.id.asc())
                 .fetch();
