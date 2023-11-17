@@ -15,7 +15,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class UserBudgetCreateRequestTest {
 
-    UserBudgetCreateRequest request = null;
+    UserBudgetCreateRequest request;
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
     @BeforeEach
