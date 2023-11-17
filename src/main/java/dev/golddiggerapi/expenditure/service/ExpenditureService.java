@@ -200,7 +200,7 @@ public class ExpenditureService {
                 .sum();
 
         // 유저의 이번달 설정 예산을 가져온다.
-        List<UserBudget> userBudgetsInNowMonth = userBudgetRepository.findUserBudgetsByUserAndPlannedMonth(user, YearMonth.now().atDay(1).atStartOfDay());
+        List<UserBudget> userBudgetsInNowMonth = userBudgetRepository.findUserBudgetsByUserAndPlannedYearMonth(user, YearMonth.now().atDay(1).atStartOfDay());
 
         // 유저의 이번달 설정 예산 총합
         long plannedBudget = userBudgetsInNowMonth
@@ -217,7 +217,7 @@ public class ExpenditureService {
         expenditureCategoryAndAmountResponses.stream()
                 .map(i -> {
                     Optional<UserBudget> optionalUserBudget =
-                            userBudgetRepository.findUserBudgetByUserAndExpenditureCategory_IdAndPlannedMonth(user, i.categoryId(), YearMonth.now().atDay(1).atStartOfDay());
+                            userBudgetRepository.findUserBudgetByUserAndExpenditureCategory_IdAndPlannedYearMonth(user, i.categoryId(), YearMonth.now().atDay(1).atStartOfDay());
                     return optionalUserBudget.map(userBudget ->
                                     ExpenditureByTodayByCategoryStatisticsResponse.toResponse(i, userBudget.analyzeReasonableExpenditureSumAndRisk(i.sum())))
                             .orElseGet(() -> ExpenditureByTodayByCategoryStatisticsResponse.toResponse(i, new ExpenditureAnalyze(0L, 0L)));
