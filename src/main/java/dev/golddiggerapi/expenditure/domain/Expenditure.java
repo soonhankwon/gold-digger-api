@@ -76,8 +76,12 @@ public class Expenditure {
     }
 
     public void exclude() {
-        if(expenditureStatus == ExpenditureStatus.INCLUDED) {
+        if(isExpenditureStatusIncluded()) {
             this.expenditureStatus = ExpenditureStatus.EXCLUDED;
         }
+    }
+
+    private boolean isExpenditureStatusIncluded() {
+        return expenditureStatus == ExpenditureStatus.INCLUDED;
     }
 }

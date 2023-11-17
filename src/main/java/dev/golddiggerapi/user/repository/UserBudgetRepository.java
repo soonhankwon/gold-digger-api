@@ -12,7 +12,9 @@ import java.util.Optional;
 
 @Repository
 public interface UserBudgetRepository extends JpaRepository<UserBudget, Long>, UserBudgetRepositoryCustom {
-    boolean existsByUserAndExpenditureCategoryAndPlannedMonth(User user, ExpenditureCategory category, LocalDateTime plannedMonth);
-    List<UserBudget> findUserBudgetsByUserAndPlannedMonth(User user, LocalDateTime plannedMonth);
-    Optional<UserBudget> findUserBudgetByUserAndExpenditureCategory_IdAndPlannedMonth(User user, Long categoryId, LocalDateTime plannedMonth);
+    boolean existsByUserAndExpenditureCategoryAndPlannedYearMonth(User user, ExpenditureCategory category, LocalDateTime plannedYearMonth);
+
+    List<UserBudget> findUserBudgetsByUserAndPlannedYearMonth(User user, LocalDateTime plannedYearMonth);
+
+    Optional<UserBudget> findUserBudgetByUserAndExpenditureCategory_IdAndPlannedYearMonth(User user, Long categoryId, LocalDateTime plannedYearMonth);
 }
