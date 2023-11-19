@@ -50,8 +50,9 @@
 <br/>
 
 ## api 명세서
-- Swagger : http://localhost:8080/swagger-ui/index.html
-- `로그인 API`는 시큐리티에서 제공하도록 구현해서 스웨거로 문서화되지 않았습니다.
+- Swagger : http://43.202.192.55/swagger-ui/index.html#/
+- Local : http://localhost:8080/swagger-ui/index.html
+- `로그인 API`는 시큐리티에서 제공하도록 구현, 스웨거로 문서화되지 않아 아래에 표기했습니다.
   ```plain
   - url: /sign-in
   - method: POST
