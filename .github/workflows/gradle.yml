@@ -62,9 +62,6 @@ jobs:
             sudo docker stop $(sudo docker ps -q --filter "ancestor=${{ secrets.DOCKER_USERNAME }}/golddigger")
             sudo docker rm $(sudo docker ps -aq --filter "ancestor=${{ secrets.DOCKER_USERNAME }}/golddigger")
 
-            # 도커 이미지 삭제
-            sudo docker image rm ${{ secrets.DOCKER_USERNAME }}/golddigger
-
             # 안쓰는 이미지 삭제
             sudo docker image prune -a -f
       
