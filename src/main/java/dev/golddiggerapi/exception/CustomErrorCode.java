@@ -21,7 +21,8 @@ public enum CustomErrorCode {
     INVALID_PARAMETER_DATE_NONE_SERVICE_DAY(HttpStatus.BAD_REQUEST, "Parameter's date includes none service day"),
     INVALID_PARAMETER_START_DATE(HttpStatus.BAD_REQUEST, "Parameter's start date can't after end"),
     INVALID_EXPENDITURES_GET_DURATION(HttpStatus.BAD_REQUEST, "Get Expenditures duration can't up to 30days"),
-    INVALID_PARAMETER_YEAR_BEFORE_NOW(HttpStatus.BAD_REQUEST, "Year can't before now");
+    INVALID_PARAMETER_YEAR_BEFORE_NOW(HttpStatus.BAD_REQUEST, "Year can't before now"),
+    CANT_GET_LOCK(HttpStatus.LOCKED, "At the same time, can't make excessive requests");
 
     private final HttpStatus status;
 
