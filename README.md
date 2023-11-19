@@ -32,6 +32,9 @@
   - `지난 달 대비` , `지난 요일 대비`,  `다른 유저 대비` 등 여러 기준 `카테고리 별` 지출 통계를 확인 할 수 있습니다.
 <br/>
 
+## 아키텍처
+![gold-digger-arch drawio](https://github.com/soonhankwon/gold-digger-api/assets/113872320/79cc3e47-bc68-4579-b7a7-5148971c79f4)
+
 ## 기술스택
 ### 언어 및 라이브러리
 - Java 17 Amazon Corretto
@@ -47,6 +50,9 @@
 ### 데이터베이스
 - MySQL 8.0.33
 - Redis 7.0.8
+### DevOps
+- AWS EC2
+- AWS RDS
 <br/>
 
 ## api 명세서
