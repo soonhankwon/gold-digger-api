@@ -1,5 +1,8 @@
 package dev.golddiggerapi.config;
 
+import org.redisson.Redisson;
+import org.redisson.api.RedissonClient;
+import org.redisson.config.Config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -56,4 +59,13 @@ public class RedisConfig {
                 .build();
     }
 
+    @Bean
+    public RedissonClient redissonClient() {
+        Config config = new Config();
+        config.useSingleServer()
+                .setAddress("redis://" + host + ":" + port)
+                .setConnectionMinimumIdleSize(5)
+                .setConnectionPoolSize(200);
+        return Redisson.create(config);
+    }
 }
