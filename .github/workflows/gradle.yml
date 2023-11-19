@@ -59,11 +59,11 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             # 구동중인 모든 컨테이너 스탑 & 삭제
-            sudo docker stop $(sudo docker ps -q --filter "ancestor=${{ secrets.DOCKER_USERNAME }}/interviewdefense")
-            sudo docker rm $(sudo docker ps -aq --filter "ancestor=${{ secrets.DOCKER_USERNAME }}/interviewdefense")
+            sudo docker stop $(sudo docker ps -q --filter "ancestor=${{ secrets.DOCKER_USERNAME }}/golddigger")
+            sudo docker rm $(sudo docker ps -aq --filter "ancestor=${{ secrets.DOCKER_USERNAME }}/golddigger")
 
             # 도커 이미지 삭제
-            sudo docker image rm ${{ secrets.DOCKER_USERNAME }}/interviewdefense
+            sudo docker image rm ${{ secrets.DOCKER_USERNAME }}/golddigger
 
             # 안쓰는 이미지 삭제
             sudo docker image prune -a -f
