@@ -16,7 +16,7 @@ import java.time.*;
 @Table(name = "user_budget", indexes = {
         @Index(name = "fk_ub_user_idx", columnList = "user_id"),
         @Index(name = "fk_ub_expenditure_category_idx", columnList = "expenditure_category_id"),
-        @Index(name = "idx_planned_year_month_idx", columnList = "planned_month")
+        @Index(name = "idx_planned_year_month_idx", columnList = "planned_year_month")
 })
 public class UserBudget {
 
