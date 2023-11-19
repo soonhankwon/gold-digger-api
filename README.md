@@ -53,6 +53,8 @@
 ### DevOps
 - AWS EC2
 - AWS RDS
+- GitHub Actions
+- Docker
 <br/>
 
 ## api 명세서
