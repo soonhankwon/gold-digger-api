@@ -8,6 +8,8 @@ import dev.golddiggerapi.expenditure.domain.Expenditure;
 import dev.golddiggerapi.expenditure.domain.ExpenditureCategory;
 import dev.golddiggerapi.expenditure.repository.ExpenditureCategoryRepository;
 import dev.golddiggerapi.expenditure.repository.ExpenditureRepository;
+import dev.golddiggerapi.global.util.service.TransactionService;
+import dev.golddiggerapi.global.util.strategy.RedissonLockContext;
 import dev.golddiggerapi.notification.event.ExpenditureAnalyzeEvent;
 import dev.golddiggerapi.notification.event.ExpenditureRecommendationEvent;
 import dev.golddiggerapi.user.controller.dto.UserBudgetCategoryAndAvailableExpenditure;
@@ -39,17 +41,23 @@ public class ExpenditureService {
     private final UserBudgetRepository userBudgetRepository;
     private final BudgetConsultingService budgetConsultingService;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final RedissonLockContext redissonLockContext;
+    private final TransactionService transactionService;
 
-    @Transactional
     public String createExpenditure(String username, Long categoryId, ExpenditureRequest request) {
-        User user = userRepository.findUserByUsername(username)
-                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
+        redissonLockContext.executeLock(username, () ->
+                // 락을 점유한 스레드만 트랜잭션 적용
+                transactionService.executeAsTransactional(() -> {
+                    User user = userRepository.findUserByUsername(username)
+                            .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
-        ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
-                .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
+                    ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
+                            .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
 
-        Expenditure expenditure = new Expenditure(user, category, request);
-        expenditureRepository.save(expenditure);
+                    Expenditure expenditure = new Expenditure(user, category, request);
+                    expenditureRepository.save(expenditure);
+                    return null;
+                }));
         return "created";
     }
 

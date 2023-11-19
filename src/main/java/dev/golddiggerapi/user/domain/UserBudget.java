@@ -24,6 +24,9 @@ public class UserBudget {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Version
+    private Long version;
+
     private Long amount;
 
     @Column(name = "planned_year_month")
