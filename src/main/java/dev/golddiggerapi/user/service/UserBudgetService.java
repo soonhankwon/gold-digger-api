@@ -43,7 +43,7 @@ public class UserBudgetService {
         return "created";
     }
 
-    private boolean isExistsUserBudgetByCategoryAndMonth(User user, ExpenditureCategory category, LocalDateTime plannedYearMonth) {
+    private boolean isExistsUserBudgetByCategoryAndYearMonth(User user, ExpenditureCategory category, LocalDateTime plannedYearMonth) {
         return userBudgetRepository.existsByUserAndExpenditureCategoryAndPlannedYearMonth(user, category, plannedYearMonth);
     }
 
@@ -66,7 +66,7 @@ public class UserBudgetService {
     }
 
     private void validateDuplicatedUserBudget(User user, UserBudget userBudget, ExpenditureCategory category) {
-        if (isExistsUserBudgetByCategoryAndMonth(user, category, userBudget.getPlannedYearMonth())) {
+        if (isExistsUserBudgetByCategoryAndYearMonth(user, category, userBudget.getPlannedYearMonth())) {
             throw new ApiException(CustomErrorCode.DUPLICATED_USER_BUDGET);
         }
     }
