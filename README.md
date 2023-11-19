@@ -136,8 +136,6 @@ public record UserSignupRequest(
   
 - 인증과정에서 가장 중점을 뒀던 점은 시큐리티에서 제공하는 흐름과 기능을 최대한 맞춰서 이용하는 것이었습니다.
 - 이유는 시큐리티는 `보안에 전문적`인 라이브러리이기 때문에 `보안성`을 기본적으로 보장해주기 때문입니다.
-- 시큐리티의 `AuthenticationManager`와 `JwtAuthenticationFilter`를 통해 로그인을 수행하도록 했습니다.
-- JwtAuthenticationFilter 인증과정을 통해 로그인이 정상적이라면 `헤더`에 `AccessToken`과 `RefreshToken`을 발급합니다.
 - 시큐리티에서 제공하는 `PasswordEncoderFactories`의 createDelegatingPasswordEncoder 메서드를 통해 인코더를 빈으로 등록했습니다.
   - 인증, 인가에 대해서는 최대한 시큐리티에서 제공하는 흐름대로 구현하는것이 `안정성`면에서 좋다고 생각했습니다.
 - 시큐리티에 위임하는 인코더를 통해 `패스워드를 암호화`하고 로그인시에도 시큐리티가 인증절차에서 해당 인코더로 패스워드 검증을 수행합니다.
@@ -170,7 +168,6 @@ public record UserSignupRequest(
 <summary><strong> 로그인시 JWT가 잘 발급이 되나? - Click! </strong></summary>
 <div markdown="1">    
   
-- 인증과정에서 가장 중점을 뒀던 점은 시큐리티에서 제공하는 흐름과 기능을 최대한 맞춰서 이용하는 것이었습니다.
 - 시큐리티의 `AuthenticationManager`와 `JwtAuthenticationFilter`를 통해 로그인을 수행하도록 했습니다.
 - JwtAuthenticationFilter 인증과정을 통해 로그인이 정상적이라면 `헤더`에 `AccessToken`과 `RefreshToken`을 발급합니다.
 </div>
@@ -200,7 +197,7 @@ public record UserSignupRequest(
 </div>
 </details>
 
-- 이후 헤더의 AccessToken를 통해 url `인가`가 이루어지며, AccessToken 만료시 RefreshToken을 통해 재발급을 받습니다.
+- 이후 헤더의 AccessToken 검증을 통해 url `인가`가 이루어지며, AccessToken 만료시 RefreshToken을 통해 재발급을 받습니다.
 - RefreshToken은 DB/IO를 줄이기위해 `캐싱`을 해놓고 사용 & `만료시간`이 지나면 삭제하기위해 `Redis`를 활용했습니다.
 
 <details>
@@ -260,7 +257,7 @@ public record UserSignupRequest(
 - 유저예산 수정(PATCH): 사용자는 예산의 액수, 년, 월, 지출 카테고리를 `변경`할 수 있도록 구현했습니다.
 - 년, 월, 지출 카테고리를 변경했을 경우 `기존 예산과 중복`된다면?
   - 유저예산 테이블에 설정년월을 의미하는 `plannedYearMonth`라는 datetime 데이터 타입의 컬럼을 만들었습니다.
-  - plannedMonth는 ex)`2023-11-01 00:00:00.000000`로 DB에 저장됩니다.
+  - plannedYearMonth는 ex)`2023-11-01 00:00:00.000000`로 DB에 저장됩니다.
   - 예산을 변경하고 유저에게 이미 plannedYearMonth와 카테고리가 같은 설정예산이 있다면 `예외처리`합니다.
 <details>
 <summary><strong> 기존 예산과 중복되는 경우 예외처리 CODE - Click! </strong></summary>
@@ -284,7 +281,7 @@ public record UserSignupRequest(
 
     private void validateDuplicatedUserBudget(User user, UserBudget userBudget, ExpenditureCategory category) {
         // 카테고리와 설정년월이 같다면 -> 예외처리
-        if (isExistsUserBudgetByCategoryAndMonth(user, category, userBudget.getPlannedYearMonth())) {
+        if (isExistsUserBudgetByCategoryAndYearMonth(user, category, userBudget.getPlannedYearMonth())) {
             throw new ApiException(CustomErrorCode.DUPLICATED_USER_BUDGET);
         }
     }
@@ -442,7 +439,8 @@ public record ExpenditureRequest(
 2. 지출 CRUD
 - 지출을 `생성`, `수정`, `읽기(상세)`, `읽기(목록)`, `삭제` , `합계제외` 할 수 있습니다.
 - CRUD 공통 고려사항 : `권한`
-  - 서비스에서 지출에 대한 `읽기, 수정, 삭제 권한`은 `해당 유저`만 가지고있도록 합니다. 따라서 유저의 지출인지 검증하여 다르다면 `예외처리`합니다.   
+  - 서비스에서 지출에 대한 `읽기, 수정, 삭제 권한`은 `해당 유저`만 가지고있도록 합니다. 따라서 유저의 지출인지 검증하여 다르다면 `예외처리`합니다.
+  - 해당 `인가` 절차는 `JWT(AccessToken)`을 검증하여 SecurityContextHolder에 `전역적`으로 설정된 유저정보를 비즈니스 로직에서 `검증`하도록 했습니다.
 #### 지출생성 API(POST)
 - 유저와 지출 카테고리를 불러와 둘을 FK로 가지는 지출을 생성합니다.
 #### 지출수정 API(PATCH)
@@ -726,6 +724,20 @@ public record ExpenditureRequest(
 
 - 적정 금액과 위험도를 분석하는 로직은 어디에?
   - 유저예산에 대한 `프로퍼티`는 `유저예산 객체`가 가지고 있기 때문에 유저예산에 메세지를 보내 `적정 금액`과 `위험도`를 `분석`하도록 했습니다.
+<details>
+<summary><strong> 유저예산의 적정 금액, 위험도 분석 도메인 로직 CODE - Click! </strong></summary>
+<div markdown="1">  
+
+  ````java
+      public ExpenditureAnalyze analyzeReasonableExpenditureSumAndRisk(Long expenditureSum) {
+        Long reasonableExpenditureSum = this.amount / YearMonth.now().lengthOfMonth();
+        Long risk = (expenditureSum / reasonableExpenditureSum) * 100;
+        return new ExpenditureAnalyze(reasonableExpenditureSum, risk);
+    }
+  ````
+</div>
+</details>
+
 3. 지출 추천 및 안내 `디스코드 웹훅` 전송
 - 외부 API를 사용해서 사용자의 `디스코드 웹훅 url`에 웹훅을 보내는 서비스입니다.
 - `08:00` 에는 `오늘의 지출 추천` 알람, `20:00` 에는 `오늘의 지출 안내 및 분석` 알람을 보냅니다.
