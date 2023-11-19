@@ -43,6 +43,7 @@
 - Spring Validation 3.1.5
 - Querydsl 5.0.0
 - Spring Data Redis 3.1.5
+- Redisson 3.24.3
 - Spring WebFlux 6.0.13
 - Spring Security 6.1.5
 - JJWT 0.12.3
@@ -888,5 +889,58 @@ public ExpenditureStatisticsResponse getExpenditureStatistics(String username) {
 </details>
 
 ## 핵심문제 해결과정 및 전략
+### 동시성 제어 이슈
+1. 지출, 유저예산 `업데이트`시 동시성 제어를 위해 `낙관적락` 적용
+- 지출, 유저예산 업데이트시 동일 데이터에 같은 사용자가 동시에 접근하는 동시성 이슈가 발생했습니다.
+- 비관적락은 성능에 이슈가 있고, 해당 업데이트시 동일 유저가 실수로 접근하는 경우라고 판단하여 낙관적락을 적용했습니다.
+- JPA `@Version`을 적용하여 애플리케이션 단계에서 동시성 이슈를 개선했습니다.   
+2. 지출, 유저예산, 추천 유저예산 `생성`시 동시성 제어를 위해 `분산락` 적용
+- 업데이트의 경우와 달리 생성시에는 낙관적락으로 동시성 제어가 불가능했습니다.
+- 비관적락은 성능에 이슈가 있어 `Redisson`을 활용한 분산락을 적용했습니다.
+- @Transactional은 동일 클래스 내부 메서드 호출에는 적용되지 않기 때문에, 별도의 `TransactionSevice`를 구현하여 내부 메서드에 `트랜잭션`을 적용했습니다.
+- 락을 username로 설정하여 동시에 요청이 들어 왔을 경우에도 한 개의 스레드만 락을 점유하여 요청을 수행하도록 구현했습니다.
+- 분산락 적용 코드가 `템플릿화`되있는 점을 인식(try-catch 블럭) `템플릿 콜백(전략)패턴`을 활용해서 코드를 개선시켰습니다. 
+<details>
+<summary><strong> 분산락 및 내부 메서드 트랜잭션 적용 CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+public String createExpenditure(String username, Long categoryId, ExpenditureRequest request) {
+        redissonLockContext.executeLock(username, () ->
+                // 락을 점유한 스레드만 트랜잭션 적용
+                transactionService.executeAsTransactional(() -> {
+                    User user = userRepository.findUserByUsername(username)
+                            .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
+
+                    ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
+                            .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
+
+                    Expenditure expenditure = new Expenditure(user, category, request);
+                    expenditureRepository.save(expenditure);
+                    return null;
+                }));
+        return "created";
+    }
+
+public String createUserBudget(String username, Long categoryId, UserBudgetCreateRequest request) {
+        redissonLockContext.executeLock(username, () ->
+                // 락을 점유한 스레드만 트랜잭션 적용
+                transactionService.executeAsTransactional(() -> {
+                    User user = userRepository.findUserByUsername(username)
+                            .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
+
+                    ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
+                            .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
+
+                    UserBudget userBudget = new UserBudget(user, category, request);
+                    validateDuplicatedUserBudget(user, userBudget, category);
+                    userBudgetRepository.save(userBudget);
+                    return null;
+                }));
+        return "created";
+    }
+````
+</div>
+</details>
 
 <br/>
