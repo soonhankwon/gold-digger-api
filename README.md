@@ -943,4 +943,34 @@ public String createUserBudget(String username, Long categoryId, UserBudgetCreat
 </div>
 </details>
 
+<details>
+<summary><strong> 분산락 전략패턴 CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+@Component
+@RequiredArgsConstructor
+public class RedissonLockContext {
+
+    private final RedissonClient redissonClient;
+
+    public void executeLock(String username, RedissonLockStrategy strategy) {
+        RLock lock = redissonClient.getLock(username);
+        try {
+            // waitTime: 락 대기시간, leaseTime: 해당 시간이 지나면 락 해제
+            boolean available = lock.tryLock(0, 1, TimeUnit.SECONDS);
+            if(!available) {
+                throw new ApiException(CustomErrorCode.CANT_GET_LOCK);
+            }
+            // 전략은 서비스레이어에서 구체적 구현
+            strategy.call();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+}
+````
+</div>
+</details>
+
 <br/>
