@@ -2,7 +2,6 @@ package dev.golddiggerapi.config;
 
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
-import org.redisson.config.Config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -49,9 +48,9 @@ public class RedisConfig {
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory cf) {
         RedisCacheConfiguration redisCacheConfiguration = RedisCacheConfiguration.defaultCacheConfig()
-                        .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                        .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer()))
-                        .entryTtl(Duration.ZERO);
+                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer()))
+                .entryTtl(Duration.ZERO);
 
         return RedisCacheManager.RedisCacheManagerBuilder
                 .fromConnectionFactory(cf)
@@ -61,11 +60,6 @@ public class RedisConfig {
 
     @Bean
     public RedissonClient redissonClient() {
-        Config config = new Config();
-        config.useSingleServer()
-                .setAddress("rediss://" + host + ":" + port)
-                .setConnectionMinimumIdleSize(5)
-                .setConnectionPoolSize(200);
-        return Redisson.create(config);
+        return Redisson.create();
     }
 }
