@@ -19,13 +19,15 @@ public class RedissonLockContext {
         RLock lock = redissonClient.getLock(username);
         try {
             // waitTime: 락 대기시간, leaseTime: 해당 시간이 지나면 락 해제
-            boolean available = lock.tryLock(0, 1, TimeUnit.SECONDS);
-            if(!available) {
+            boolean available = lock.tryLock(0, 3, TimeUnit.SECONDS);
+            if (!available) {
                 throw new ApiException(CustomErrorCode.CANT_GET_LOCK);
             }
             strategy.call();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
+        } finally {
+            lock.unlock();
         }
     }
 }
