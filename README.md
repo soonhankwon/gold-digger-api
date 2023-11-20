@@ -53,14 +53,16 @@
 - Redis 7.0.8
 ### DevOps
 - AWS EC2
+  - 서버 비용문제로 인스턴스는 `중지`시켜놓은 상태입니다. `배포`스크린샷 첨부합니다.
+  - ![deploy-ubuntu](https://github.com/soonhankwon/gold-digger-api/assets/113872320/73638ffe-ec04-42ef-9f96-55b1ad425bea)   
 - AWS RDS
 - GitHub Actions
 - Docker
 <br/>
 
 ## api 명세서
-- Swagger : http://43.202.192.55/swagger-ui/index.html#/
-- Local : http://localhost:8080/swagger-ui/index.html
+- Swagger : http://localhost:8080/swagger-ui/index.html#/
+  - 애플리케이션 구동 후 스웨거 api명세서 확인가능압니다.
 - `로그인 API`는 시큐리티에서 제공하도록 구현, 스웨거로 문서화되지 않아 아래에 표기했습니다.
   ```plain
   - url: /sign-in
