@@ -63,7 +63,6 @@ public class RedisConfig {
     public RedissonClient redissonClient() {
         Config config = new Config();
         config.useSingleServer()
-                .setAddress("rediss://" + host + ":" + port)
                 .setConnectionMinimumIdleSize(5)
                 .setConnectionPoolSize(200);
         return Redisson.create(config);
