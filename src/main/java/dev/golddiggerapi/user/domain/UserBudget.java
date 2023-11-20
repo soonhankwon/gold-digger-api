@@ -86,4 +86,8 @@ public class UserBudget {
         Long risk = (expenditureSum / reasonableExpenditureSum) * 100;
         return new ExpenditureAnalyze(reasonableExpenditureSum, risk);
     }
+
+    public boolean isCategoryIdSameAsRequestCategoryId(UserBudgetUpdateRequest request) {
+        return this.expenditureCategory.getId().equals(request.categoryId());
+    }
 }
