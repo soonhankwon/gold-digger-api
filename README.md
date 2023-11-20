@@ -890,6 +890,7 @@ public ExpenditureStatisticsResponse getExpenditureStatistics(String username) {
 
 ## 핵심문제 해결과정 및 전략
 ### 동시성 제어 이슈
+---
 1. 지출, 유저예산 `업데이트`시 동시성 제어를 위해 `낙관적락` 적용
 - 지출, 유저예산 업데이트시 동일 데이터에 같은 사용자가 동시에 접근하는 동시성 이슈가 발생했습니다.
 - 비관적락은 성능에 이슈가 있고, 해당 업데이트시 동일 유저가 실수로 접근하는 경우라고 판단하여 낙관적락을 적용했습니다.
@@ -973,4 +974,27 @@ public class RedissonLockContext {
 </div>
 </details>
 
+### 캐싱전략
+---
+1. 카테고리 목록조회 API 캐싱
+- 카테고리 목록은 `서비스측에서 설정한 지출 카테고리`를 제공합니다. 따라서 DB에는 사측의 결정에 의해서만 카테고리가 업데이트됩니다.
+- 따라서 지출 카테고리 목록 조회 API는 초기에 조회결과를 Redis에 `캐싱`을 해두고 이후에는 캐싱된 결과를 조회하도록 하여 `불필요한 DB I/O를 개선`했습니다. 
+2. 유저예산 추천 API의 카테고리별 유저예산 비율 `통계 쿼리 캐싱`
+- 유저예산 추천시 전체 유저의 카테고리별 유저예산 비율을 통계하여 사용하기 때문에 많은 비용이 발생하는 문제를 겪었습니다.
+- 카테고리별 유저예산 비율이 매우 정확한 수치를 요구하는 서비스가 아니기 때문에 해당 통계쿼리를 `새벽 2시 스케쥴러`를 통해 `캐싱`하도록 했습니다.
+- 캐싱결과 기존 8.7sec 에서 57ms로 Latency 개선율 `99.34%` 및 불필요한 `DB/IO를 개선`시킬 수 있었습니다.
+
+<details>
+<summary><strong> 카테고리별 유저예산 비율 통계 쿼리 캐싱 CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+@Scheduled(cron = "0 0 2 * * *")
+    @CachePut(value = "user-budget:avg-ratio:1:collections", cacheManager = "cacheManager")
+    public void cacheUserBudgetAvgRatioByCategoryStatistic() {
+        userBudgetRepository.statisticUserBudgetAvgRatioByCategory();
+    }
+````
+</div>
+</details>
 <br/>
