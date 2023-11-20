@@ -3,7 +3,7 @@ package dev.golddiggerapi.user.controller.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 @Schema(description = "유저예산 수정 요청 DTO")
 public record UserBudgetUpdateRequest(
@@ -23,13 +23,13 @@ public record UserBudgetUpdateRequest(
         Integer month,
 
         @Schema(description = "수정 카테고리 ID", example = "2")
-        @NotBlank
+        @NotNull
         Long categoryId
 ) {
     public UserBudgetUpdateRequest(@Min(value = 0) Long amount,
                                    Integer year,
                                    @Min(1) @Max(12) Integer month,
-                                   @NotBlank Long categoryId) {
+                                   @NotNull Long categoryId) {
         this.amount = amount;
         this.year = year;
         this.month = month;
