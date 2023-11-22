@@ -1,6 +1,5 @@
 package dev.golddiggerapi.expenditure.service;
 
-import dev.golddiggerapi.budget_consulting.service.BudgetConsultingService;
 import dev.golddiggerapi.exception.CustomErrorCode;
 import dev.golddiggerapi.exception.detail.ApiException;
 import dev.golddiggerapi.expenditure.controller.dto.*;
@@ -29,6 +28,7 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 @Slf4j
 @Service
@@ -39,7 +39,6 @@ public class ExpenditureService {
     private final UserRepository userRepository;
     private final ExpenditureCategoryRepository expenditureCategoryRepository;
     private final UserBudgetRepository userBudgetRepository;
-    private final BudgetConsultingService budgetConsultingService;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final RedissonLockContext redissonLockContext;
     private final TransactionService transactionService;
@@ -57,6 +56,23 @@ public class ExpenditureService {
                     Expenditure expenditure = new Expenditure(user, category, request);
                     expenditureRepository.save(expenditure);
                     return null;
+                }));
+        return "created";
+    }
+
+    public String createExpenditureV1(String username, Long categoryId, ExpenditureRequest request) {
+        redissonLockContext.executeLock(username, () ->
+                // 락을 점유한 스레드만 트랜잭션 적용
+                transactionService.executeAsTransactional(() -> {
+                    User user = userRepository.findUserByUsername(username)
+                            .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
+
+                    ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
+                            .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
+
+                    Expenditure expenditure = new Expenditure(user, category, request);
+                    expenditureRepository.save(expenditure);
+                    return "Transaction executed successfully";
                 }));
         return "created";
     }
@@ -142,16 +158,18 @@ public class ExpenditureService {
         return "excluded";
     }
 
-    @Scheduled(cron = "0 0 8 * * *")
-    public void sendExpenditureRecommendationByToday() {
+    public void sendExpenditureRecommendationByToday(Function<Long, String> analyzeBudgetStatus,
+                                                     Function<String, Long> getMinimumAvailableExpenditure) {
         List<User> usersBySubscribeNotification = userRepository.findAllBySubscribeNotificationAndDiscordUrlNot(Boolean.TRUE, "NONE");
         usersBySubscribeNotification.forEach(i -> {
-            ExpenditureByTodayRecommendationResponse expenditureRecommendationByToday = getExpenditureRecommendationByToday(i.getUsername());
+            ExpenditureByTodayRecommendationResponse expenditureRecommendationByToday = getExpenditureRecommendationByTodayV1(i.getUsername(), analyzeBudgetStatus, getMinimumAvailableExpenditure);
             applicationEventPublisher.publishEvent(new ExpenditureRecommendationEvent(expenditureRecommendationByToday, i.getDiscordUrl()));
         });
     }
 
-    public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByToday(String username) {
+    public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByTodayV1(String username,
+                                                                                          Function<Long, String> analyzeBudgetStatus,
+                                                                                          Function<String, Long> getMinimumAvailableExpenditure) {
         User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
@@ -162,14 +180,14 @@ public class ExpenditureService {
         Long realAvailableExpenditure = availableUserBudgetByCategoryByToday.stream()
                 .mapToLong(UserBudgetCategoryAndAvailableExpenditure::availableExpenditure).sum();
         // 예산 컨설팅 서비스에서 실제 예산 대비 지출액으로 구체적인 분석 담당
-        String message = budgetConsultingService.analyzeBudgetStatus(realAvailableExpenditure);
+        String message = analyzeBudgetStatus.apply(realAvailableExpenditure);
 
         // 지속적인 소비 습관을 생성하기 위한 서비스이므로 예산을 초과하더라도 적정한 금액을 추천
         List<UserBudgetCategoryAndAvailableExpenditureRecommendation> res =
                 availableUserBudgetByCategoryByToday.stream()
                         .map(i -> {
                             if (i.availableExpenditure() < 0) {
-                                Long minimumAvailableExpenditure = budgetConsultingService.getMinimumAvailableExpenditure(i);
+                                Long minimumAvailableExpenditure = getMinimumAvailableExpenditure.apply(i.name());
                                 return UserBudgetCategoryAndAvailableExpenditureRecommendation.toMinimumRecommendation(i, minimumAvailableExpenditure);
                             }
                             return UserBudgetCategoryAndAvailableExpenditureRecommendation.toRecommendation(i);
