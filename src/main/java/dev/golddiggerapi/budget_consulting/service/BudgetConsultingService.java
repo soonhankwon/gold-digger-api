@@ -18,8 +18,8 @@ public class BudgetConsultingService {
     }
 
     //TODO 데이터 통계 기반으로 고도화 필요
-    public Long getMinimumAvailableExpenditure(UserBudgetCategoryAndAvailableExpenditure userBudgetCategoryAndAvailableExpenditure) {
-        if(userBudgetCategoryAndAvailableExpenditure.name().equals("식비")) {
+    public Long getMinimumAvailableExpenditureV1(String categoryName) {
+        if(categoryName.equals("식비")) {
             return 15_000L;
         }
         return 10_000L;
