@@ -30,6 +30,8 @@ public class RedisConfig {
     @Value("${spring.data.redis.port}")
     private int port;
 
+    private static final String REDISSON_HOST_PREFIX = "redis://";
+
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
         RedisStandaloneConfiguration redisConfiguration = new RedisStandaloneConfiguration();
@@ -49,9 +51,9 @@ public class RedisConfig {
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory cf) {
         RedisCacheConfiguration redisCacheConfiguration = RedisCacheConfiguration.defaultCacheConfig()
-                        .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
-                        .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer()))
-                        .entryTtl(Duration.ZERO);
+                .serializeKeysWith(RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
+                .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(new GenericJackson2JsonRedisSerializer()))
+                .entryTtl(Duration.ZERO);
 
         return RedisCacheManager.RedisCacheManagerBuilder
                 .fromConnectionFactory(cf)
@@ -63,9 +65,7 @@ public class RedisConfig {
     public RedissonClient redissonClient() {
         Config config = new Config();
         config.useSingleServer()
-                .setAddress("redis://" + host + ":" + port)
-                .setConnectionMinimumIdleSize(5)
-                .setConnectionPoolSize(200);
+                .setAddress(REDISSON_HOST_PREFIX + host + ":" + port);
         return Redisson.create(config);
     }
 }

@@ -32,6 +32,9 @@
   - `지난 달 대비` , `지난 요일 대비`,  `다른 유저 대비` 등 여러 기준 `카테고리 별` 지출 통계를 확인 할 수 있습니다.
 <br/>
 
+## 아키텍처
+![gold-digger-arch drawio](https://github.com/soonhankwon/gold-digger-api/assets/113872320/79cc3e47-bc68-4579-b7a7-5148971c79f4)
+
 ## 기술스택
 ### 언어 및 라이브러리
 - Java 17 Amazon Corretto
@@ -40,6 +43,7 @@
 - Spring Validation 3.1.5
 - Querydsl 5.0.0
 - Spring Data Redis 3.1.5
+- Redisson 3.24.3
 - Spring WebFlux 6.0.13
 - Spring Security 6.1.5
 - JJWT 0.12.3
@@ -47,11 +51,18 @@
 ### 데이터베이스
 - MySQL 8.0.33
 - Redis 7.0.8
+### DevOps
+- AWS EC2
+  - 서버 비용문제로 인스턴스는 `중지`시켜놓은 상태입니다. `배포`스크린샷 첨부합니다.
+  - ![deploy-ubuntu](https://github.com/soonhankwon/gold-digger-api/assets/113872320/73638ffe-ec04-42ef-9f96-55b1ad425bea)   
+- AWS RDS
+- GitHub Actions
+- Docker
 <br/>
 
 ## api 명세서
-- Swagger : http://43.202.192.55/swagger-ui/index.html#/
-- Local : http://localhost:8080/swagger-ui/index.html
+- Swagger : http://localhost:8080/swagger-ui/index.html#/
+  - 애플리케이션 구동 후 위 링크로 스웨거 api명세서 확인가능합니다.
 - `로그인 API`는 시큐리티에서 제공하도록 구현, 스웨거로 문서화되지 않아 아래에 표기했습니다.
   ```plain
   - url: /sign-in
@@ -880,5 +891,112 @@ public ExpenditureStatisticsResponse getExpenditureStatistics(String username) {
 </details>
 
 ## 핵심문제 해결과정 및 전략
+### 동시성 제어 이슈
+---
+1. 지출, 유저예산 `업데이트`시 동시성 제어를 위해 `낙관적락` 적용
+- 지출, 유저예산 업데이트시 동일 데이터에 같은 사용자가 동시에 접근하는 동시성 이슈가 발생했습니다.
+- 비관적락은 성능에 이슈가 있고, 해당 업데이트시 동일 유저가 실수로 접근하는 경우라고 판단하여 낙관적락을 적용했습니다.
+- JPA `@Version`을 적용하여 애플리케이션 단계에서 동시성 이슈를 개선했습니다.   
+2. 지출, 유저예산, 추천 유저예산 `생성`시 동시성 제어를 위해 `분산락` 적용
+- 업데이트의 경우와 달리 생성시에는 낙관적락으로 동시성 제어가 불가능했습니다.
+- 비관적락은 성능에 이슈가 있어 `Redisson`을 활용한 분산락을 적용했습니다.
+- @Transactional은 동일 클래스 내부 메서드 호출에는 적용되지 않기 때문에, 별도의 `TransactionSevice`를 구현하여 내부 메서드에 `트랜잭션`을 적용했습니다.
+- 락을 username로 설정하여 동시에 요청이 들어 왔을 경우에도 한 개의 스레드만 락을 점유하여 요청을 수행하도록 구현했습니다.
+- 분산락 적용 코드가 `템플릿화`되있는 점을 인식(try-catch 블럭) `템플릿 콜백(전략)패턴`을 활용해서 코드를 개선시켰습니다. 
+<details>
+<summary><strong> 분산락 및 내부 메서드 트랜잭션 적용 CODE - Click! </strong></summary>
+<div markdown="1">       
 
+````java
+public String createExpenditure(String username, Long categoryId, ExpenditureRequest request) {
+        redissonLockContext.executeLock(username, () ->
+                // 락을 점유한 스레드만 트랜잭션 적용
+                transactionService.executeAsTransactional(() -> {
+                    User user = userRepository.findUserByUsername(username)
+                            .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
+
+                    ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
+                            .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
+
+                    Expenditure expenditure = new Expenditure(user, category, request);
+                    expenditureRepository.save(expenditure);
+                    return null;
+                }));
+        return "created";
+    }
+
+public String createUserBudget(String username, Long categoryId, UserBudgetCreateRequest request) {
+        redissonLockContext.executeLock(username, () ->
+                // 락을 점유한 스레드만 트랜잭션 적용
+                transactionService.executeAsTransactional(() -> {
+                    User user = userRepository.findUserByUsername(username)
+                            .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
+
+                    ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
+                            .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
+
+                    UserBudget userBudget = new UserBudget(user, category, request);
+                    validateDuplicatedUserBudget(user, userBudget, category);
+                    userBudgetRepository.save(userBudget);
+                    return null;
+                }));
+        return "created";
+    }
+````
+</div>
+</details>
+
+<details>
+<summary><strong> 분산락 전략패턴 CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+@Component
+@RequiredArgsConstructor
+public class RedissonLockContext {
+
+    private final RedissonClient redissonClient;
+
+    public void executeLock(String username, RedissonLockStrategy strategy) {
+        RLock lock = redissonClient.getLock(username);
+        try {
+            // waitTime: 락 대기시간, leaseTime: 해당 시간이 지나면 락 해제
+            boolean available = lock.tryLock(0, 1, TimeUnit.SECONDS);
+            if(!available) {
+                throw new ApiException(CustomErrorCode.CANT_GET_LOCK);
+            }
+            // 전략은 서비스레이어에서 구체적 구현
+            strategy.call();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+}
+````
+</div>
+</details>
+
+### 캐싱전략
+---
+1. 카테고리 목록조회 API 캐싱
+- 카테고리 목록은 `서비스측에서 설정한 지출 카테고리`를 제공합니다. 따라서 DB에는 사측의 결정에 의해서만 카테고리가 업데이트됩니다.
+- 따라서 지출 카테고리 목록 조회 API는 초기에 조회결과를 Redis에 `캐싱`을 해두고 이후에는 캐싱된 결과를 조회하도록 하여 `불필요한 DB I/O를 개선`했습니다. 
+2. 유저예산 추천 API의 카테고리별 유저예산 비율 `통계 쿼리 캐싱`
+- 유저예산 추천시 전체 유저의 카테고리별 유저예산 비율을 통계하여 사용하기 때문에 많은 비용이 발생하는 문제를 겪었습니다.
+- 카테고리별 유저예산 비율이 매우 정확한 수치를 요구하는 서비스가 아니기 때문에 해당 통계쿼리를 `새벽 2시 스케쥴러`를 통해 `캐싱`하도록 했습니다.
+- 캐싱결과 기존 8.7sec 에서 57ms로 Latency 개선율 `99.34%` 및 불필요한 `DB/IO를 개선`시킬 수 있었습니다.
+
+<details>
+<summary><strong> 카테고리별 유저예산 비율 통계 쿼리 캐싱 CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+@Scheduled(cron = "0 0 2 * * *")
+    @CachePut(value = "user-budget:avg-ratio:1:collections", cacheManager = "cacheManager")
+    public void cacheUserBudgetAvgRatioByCategoryStatistic() {
+        userBudgetRepository.statisticUserBudgetAvgRatioByCategory();
+    }
+````
+</div>
+</details>
 <br/>
