@@ -277,25 +277,27 @@ public record UserSignupRequest(
 
 ````java
     @Transactional
-    public String createUserBudget(String username, Long categoryId, UserBudgetCreateRequest request) {
+    public String updateUserBudget(String username, Long userBudgetId, UserBudgetUpdateRequest request) {
         User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
-        ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
+        UserBudget userBudget = userBudgetRepository.findById(userBudgetId)
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_BUDGET_NOT_FOUND_DB));
+
+        ExpenditureCategory category = expenditureCategoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
 
-        UserBudget userBudget = new UserBudget(user, category, request);
-        // 동일 유저 예산이 있다면 예외처리합니다.
-        validateDuplicatedUserBudget(user, userBudget, category);
-        userBudgetRepository.save(userBudget);
-        return "created";
-    }
-
-    private void validateDuplicatedUserBudget(User user, UserBudget userBudget, ExpenditureCategory category) {
-        // 카테고리와 설정년월이 같다면 -> 예외처리
-        if (isExistsUserBudgetByCategoryAndYearMonth(user, category, userBudget.getPlannedYearMonth())) {
-            throw new ApiException(CustomErrorCode.DUPLICATED_USER_BUDGET);
+        // 유저 예산의 카테고리, 년, 월, 예산총액을 수정할 수 있다.
+        // 카테고리 ID가 같은 경우는 예외처리 검증 X
+        if (userBudget.isCategoryIdSameAsRequestCategoryId(request)) {
+            userBudget.update(request, category);
+            return "updated";
         }
+
+        userBudget.update(request, category);
+        // 업데이트후 중복된 월 and 카테고리 유저 예산이 DB에 있다면 예외처리한다.
+        validateDuplicatedUserBudget(user, userBudget, category);
+        return "updated";
     }
 ````
 </div>
