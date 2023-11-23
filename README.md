@@ -1066,7 +1066,7 @@ public class ExpenditureServiceHandler {
 
 // ExpenditureService의 지출생성 메서드
     // 외부 클래스로 분리되었음으로 @Transactional 적용이 가능해져 Transaction 적용서비스 및 코드 삭제
-		@Transactional
+    @Transactional
     public void createExpenditure(String username, Long categoryId, ExpenditureRequest request) {
         User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
