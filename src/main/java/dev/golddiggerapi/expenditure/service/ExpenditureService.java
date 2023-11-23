@@ -7,8 +7,6 @@ import dev.golddiggerapi.expenditure.domain.Expenditure;
 import dev.golddiggerapi.expenditure.domain.ExpenditureCategory;
 import dev.golddiggerapi.expenditure.repository.ExpenditureCategoryRepository;
 import dev.golddiggerapi.expenditure.repository.ExpenditureRepository;
-import dev.golddiggerapi.global.util.service.TransactionService;
-import dev.golddiggerapi.global.util.strategy.RedissonLockContext;
 import dev.golddiggerapi.notification.event.ExpenditureAnalyzeEvent;
 import dev.golddiggerapi.notification.event.ExpenditureRecommendationEvent;
 import dev.golddiggerapi.user.controller.dto.UserBudgetCategoryAndAvailableExpenditure;
@@ -40,41 +38,17 @@ public class ExpenditureService {
     private final ExpenditureCategoryRepository expenditureCategoryRepository;
     private final UserBudgetRepository userBudgetRepository;
     private final ApplicationEventPublisher applicationEventPublisher;
-    private final RedissonLockContext redissonLockContext;
-    private final TransactionService transactionService;
 
-    public String createExpenditure(String username, Long categoryId, ExpenditureRequest request) {
-        redissonLockContext.executeLock(username, () ->
-                // 락을 점유한 스레드만 트랜잭션 적용
-                transactionService.executeAsTransactional(() -> {
-                    User user = userRepository.findUserByUsername(username)
-                            .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
+    @Transactional
+    public void createExpenditure(String username, Long categoryId, ExpenditureRequest request) {
+        User user = userRepository.findUserByUsername(username)
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
-                    ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
-                            .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
+        ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
 
-                    Expenditure expenditure = new Expenditure(user, category, request);
-                    expenditureRepository.save(expenditure);
-                    return null;
-                }));
-        return "created";
-    }
-
-    public String createExpenditureV1(String username, Long categoryId, ExpenditureRequest request) {
-        redissonLockContext.executeLock(username, () ->
-                // 락을 점유한 스레드만 트랜잭션 적용
-                transactionService.executeAsTransactional(() -> {
-                    User user = userRepository.findUserByUsername(username)
-                            .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
-
-                    ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
-                            .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
-
-                    Expenditure expenditure = new Expenditure(user, category, request);
-                    expenditureRepository.save(expenditure);
-                    return "Transaction executed successfully";
-                }));
-        return "created";
+        Expenditure expenditure = new Expenditure(user, category, request);
+        expenditureRepository.save(expenditure);
     }
 
     @Transactional
@@ -162,14 +136,14 @@ public class ExpenditureService {
                                                      Function<String, Long> getMinimumAvailableExpenditure) {
         List<User> usersBySubscribeNotification = userRepository.findAllBySubscribeNotificationAndDiscordUrlNot(Boolean.TRUE, "NONE");
         usersBySubscribeNotification.forEach(i -> {
-            ExpenditureByTodayRecommendationResponse expenditureRecommendationByToday = getExpenditureRecommendationByTodayV1(i.getUsername(), analyzeBudgetStatus, getMinimumAvailableExpenditure);
+            ExpenditureByTodayRecommendationResponse expenditureRecommendationByToday = getExpenditureRecommendationByToday(i.getUsername(), analyzeBudgetStatus, getMinimumAvailableExpenditure);
             applicationEventPublisher.publishEvent(new ExpenditureRecommendationEvent(expenditureRecommendationByToday, i.getDiscordUrl()));
         });
     }
 
-    public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByTodayV1(String username,
-                                                                                          Function<Long, String> analyzeBudgetStatus,
-                                                                                          Function<String, Long> getMinimumAvailableExpenditure) {
+    public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByToday(String username,
+                                                                                        Function<Long, String> analyzeBudgetStatus,
+                                                                                        Function<String, Long> getMinimumAvailableExpenditure) {
         User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
