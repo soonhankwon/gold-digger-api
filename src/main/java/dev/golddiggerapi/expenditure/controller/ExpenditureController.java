@@ -2,6 +2,7 @@ package dev.golddiggerapi.expenditure.controller;
 
 import dev.golddiggerapi.expenditure.controller.dto.*;
 import dev.golddiggerapi.expenditure.service.ExpenditureService;
+import dev.golddiggerapi.expenditure.service.ExpenditureServiceHandler;
 import dev.golddiggerapi.security.principal.UserPrincipal;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,6 +26,7 @@ import java.time.LocalDate;
 public class ExpenditureController {
 
     private final ExpenditureService expenditureService;
+    private final ExpenditureServiceHandler expenditureServiceHandler;
 
     @Operation(summary = "지출 생성 API", responses = @ApiResponse(responseCode = "201"))
     @PostMapping("/{categoryId}")
@@ -32,7 +34,7 @@ public class ExpenditureController {
                                                     @Parameter(description = "지출의 카테고리 ID", required = true)
                                                     @PathVariable Long categoryId,
                                                     @Validated @RequestBody ExpenditureRequest request) {
-        String res = expenditureService.createExpenditure(userPrincipal.getUsername(), categoryId, request);
+        String res = expenditureServiceHandler.createExpenditure(userPrincipal.getUsername(), categoryId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
@@ -87,8 +89,8 @@ public class ExpenditureController {
 
     @Operation(summary = "오늘 지출 추천 API")
     @GetMapping("/today/recommend")
-    public ResponseEntity<ExpenditureByTodayRecommendationResponse> getExpenditureRecommendationByToday(@AuthenticationPrincipal UserPrincipal userPrincipal) {
-        ExpenditureByTodayRecommendationResponse res = expenditureService.getExpenditureRecommendationByToday(userPrincipal.getUsername());
+    public ResponseEntity<ExpenditureByTodayRecommendationResponse> getExpenditureRecommendationByTodayV1(@AuthenticationPrincipal UserPrincipal userPrincipal) {
+        ExpenditureByTodayRecommendationResponse res = expenditureServiceHandler.getExpenditureRecommendationByToday(userPrincipal.getUsername());
         return ResponseEntity.ok().body(res);
     }
 
@@ -102,7 +104,8 @@ public class ExpenditureController {
     @Hidden
     @GetMapping("/test/web-hook")
     public ResponseEntity<String> testWebHook() {
-        expenditureService.sendExpenditureRecommendationByToday();
+//        expenditureService.sendExpenditureRecommendationByToday();
+        expenditureServiceHandler.sendExpenditureRecommendationByToday();
         expenditureService.sendExpenditureByToday();
         return ResponseEntity.ok().body("send webhook");
     }

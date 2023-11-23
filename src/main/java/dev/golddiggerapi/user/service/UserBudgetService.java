@@ -4,8 +4,6 @@ import dev.golddiggerapi.exception.CustomErrorCode;
 import dev.golddiggerapi.exception.detail.ApiException;
 import dev.golddiggerapi.expenditure.domain.ExpenditureCategory;
 import dev.golddiggerapi.expenditure.repository.ExpenditureCategoryRepository;
-import dev.golddiggerapi.global.util.service.TransactionService;
-import dev.golddiggerapi.global.util.strategy.RedissonLockContext;
 import dev.golddiggerapi.user.controller.dto.UserBudgetAvgRatioByCategoryStatisticResponse;
 import dev.golddiggerapi.user.controller.dto.UserBudgetCreateRequest;
 import dev.golddiggerapi.user.controller.dto.UserBudgetRecommendation;
@@ -32,25 +30,18 @@ public class UserBudgetService {
     private final UserBudgetRepository userBudgetRepository;
     private final ExpenditureCategoryRepository expenditureCategoryRepository;
     private final UserRepository userRepository;
-    private final RedissonLockContext redissonLockContext;
-    private final TransactionService transactionService;
 
-    public String createUserBudget(String username, Long categoryId, UserBudgetCreateRequest request) {
-        redissonLockContext.executeLock(username, () ->
-                // 락을 점유한 스레드만 트랜잭션 적용
-                transactionService.executeAsTransactional(() -> {
-                    User user = userRepository.findUserByUsername(username)
-                            .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
+    @Transactional
+    public void createUserBudget(String username, Long categoryId, UserBudgetCreateRequest request) {
+        User user = userRepository.findUserByUsername(username)
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
-                    ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
-                            .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
+        ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
 
-                    UserBudget userBudget = new UserBudget(user, category, request);
-                    validateDuplicatedUserBudget(user, userBudget, category);
-                    userBudgetRepository.save(userBudget);
-                    return null;
-                }));
-        return "created";
+        UserBudget userBudget = new UserBudget(user, category, request);
+        validateDuplicatedUserBudget(user, userBudget, category);
+        userBudgetRepository.save(userBudget);
     }
 
     private boolean isExistsUserBudgetByCategoryAndYearMonth(User user, ExpenditureCategory category, LocalDateTime plannedYearMonth) {
@@ -114,20 +105,16 @@ public class UserBudgetService {
         return res;
     }
 
-    public String createUserBudgetByRecommendation(String username, List<UserBudgetRecommendation> request) {
-        redissonLockContext.executeLock(username, () ->
-                transactionService.executeAsTransactional(() -> {
-                    User user = userRepository.findUserByUsername(username)
-                            .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
+    @Transactional
+    public void createUserBudgetByRecommendation(String username, List<UserBudgetRecommendation> request) {
+        User user = userRepository.findUserByUsername(username)
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
-                    request.forEach(i -> {
-                        UserBudget userBudget = new UserBudget(user, i.category(), i.amount());
-                        validateDuplicatedUserBudget(user, userBudget, i.category());
-                        userBudgetRepository.save(userBudget);
-                    });
-                    return null;
-                }));
-        return "created by recommendation";
+        request.forEach(i -> {
+            UserBudget userBudget = new UserBudget(user, i.category(), i.amount());
+            validateDuplicatedUserBudget(user, userBudget, i.category());
+            userBudgetRepository.save(userBudget);
+        });
     }
 
     private boolean hasRemainingTotalRatio(AtomicReference<Double> totalRatio) {
