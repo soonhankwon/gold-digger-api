@@ -891,6 +891,194 @@ public ExpenditureStatisticsResponse getExpenditureStatistics(String username) {
 </details>
 
 ## 핵심문제 해결과정 및 전략
+### 서비스 빈들간 의존성 & 결합도 이슈
+---
+1. 요구사항을 구현하고 보니 서비스 Bean에서 다른 서비스 Bean을 의존하고 있는 `의존성 & 결합도` 문제를 인식했습니다.
+- 문제1: 무분별하게 DI해서 사용한 서비스 빈들이 거미줄처럼 꼬여 `스파게티`가 될 가능성
+- 문제2: 서비스 빈들간 `순환참조` 가능성 내포 
+2. `고차함수`와 `Handler 컴포넌트`를 활용한 리팩토링
+- 후보1: Handler 컴포넌트에서 다른 서비스의 `결과`를 받아 타겟 서비스의 메서드 파라미터로 넣어주는 방법
+- 후보2: Handler 컴포넌트에서 다른 서비스의 `함수`를 타겟서비스의 메서드에 `파라미터`로 넘겨주는 방법
+3. `함수`를 넘겨주는 것이 불변성을 보장하고 테스트를 용이하게 합니다.
+- 함수를 파라미터로 넘겨주는 방법을 선택함으로써 `불변성`을 보장 & `예측가능`하도록 개선했습니다.
+4. Before & After
+<details>
+<summary><strong> Before ExpenditureService CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+@Service
+@RequiredArgsConstructor
+public class ExpenditureService {
+
+    private final ExpenditureRepository expenditureRepository;
+    private final UserRepository userRepository;
+    private final ExpenditureCategoryRepository expenditureCategoryRepository;
+    private final UserBudgetRepository userBudgetRepository;
+    private final BudgetConsultingService budgetConsultingService;
+    private final ApplicationEventPublisher applicationEventPublisher;
+    private final RedissonLockContext redissonLockContext;
+    private final TransactionService transactionService;
+
+		public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByToday(String username) {
+		        ..............
+		        List<UserBudgetCategoryAndAvailableExpenditure> availableUserBudgetByCategoryByToday = userBudgetRepository.getAvailableUserBudgetByCategoryByToday(user);
+						
+		        Long realAvailableExpenditure = availableUserBudgetByCategoryByToday.stream()
+		                .mapToLong(UserBudgetCategoryAndAvailableExpenditure::availableExpenditure).sum();
+		        
+						// 예산 컨설팅 서비스에서 실제 예산 대비 지출액으로 구체적인 분석 담당
+						// UserBudgetConsultingService를 의존하고 있는 포인트1!
+		        String message = budgetConsultingService.analyzeBudgetStatus(realAvailableExpenditure);
+		
+		        // 지속적인 소비 습관을 생성하기 위한 서비스이므로 예산을 초과하더라도 적정한 금액을 추천
+		        List<UserBudgetCategoryAndAvailableExpenditureRecommendation> res =
+		                availableUserBudgetByCategoryByToday.stream()
+		                        .map(i -> {
+		                            if (i.availableExpenditure() < 0) {
+																		// UserBudgetConsultingService를 의존하고 있는 포인트2!
+		                                Long minimumAvailableExpenditure = budgetConsultingService.getMinimumAvailableExpenditure(i);
+		                                return UserBudgetCategoryAndAvailableExpenditureRecommendation.toMinimumRecommendation(i, minimumAvailableExpenditure);
+		                            }
+		                            return UserBudgetCategoryAndAvailableExpenditureRecommendation.toRecommendation(i);
+		                        })
+		                        .toList();
+					...........
+		    }
+.......
+````
+</div>
+</details>
+
+<details>
+<summary><strong> After ExpenditureServiceHandler & ExpenditureService CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+@Component
+public class ExpenditureServiceHandler {
+
+    private final BudgetConsultingService budgetConsultingService;
+    private final ExpenditureService expenditureService;
+    private final RedissonLockContext redissonLockContext;
+
+    public ExpenditureServiceHandler(final BudgetConsultingService budgetConsultingService,
+                                     final ExpenditureService expenditureService,
+                                     final RedissonLockContext redissonLockContext) {
+        this.budgetConsultingService = budgetConsultingService;
+        this.expenditureService = expenditureService;
+        this.redissonLockContext = redissonLockContext;
+    }
+
+    public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByToday(String username) {
+        return expenditureService.getExpenditureRecommendationByToday(
+                username,
+								// 함수를 파라미터로 넘긴다.
+                budgetConsultingService::analyzeBudgetStatus,
+								// 함수를 파라미터로 넘긴다.
+                budgetConsultingService::getMinimumAvailableExpenditure
+        );
+    }
+}
+
+public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByToday(String username,
+                                                                                    Function<Long, String> analyzeBudgetStatus,
+                                                                                    Function<String, Long> getMinimumAvailableExpenditure) {
+        .......
+        List<UserBudgetCategoryAndAvailableExpenditure> availableUserBudgetByCategoryByToday = userBudgetRepository.getAvailableUserBudgetByCategoryByToday(user);
+				
+        Long realAvailableExpenditure = availableUserBudgetByCategoryByToday.stream()
+                .mapToLong(UserBudgetCategoryAndAvailableExpenditure::availableExpenditure).sum();
+        // 예산 컨설팅 서비스에서 실제 예산 대비 지출액으로 구체적인 분석 담당
+				// UserBudgetConsultingService를 의존하고 있는 포인트1! - 함수 apply
+        String message = analyzeBudgetStatus.apply(realAvailableExpenditure);
+
+        // 지속적인 소비 습관을 생성하기 위한 서비스이므로 예산을 초과하더라도 적정한 금액을 추천
+        List<UserBudgetCategoryAndAvailableExpenditureRecommendation> res =
+                availableUserBudgetByCategoryByToday.stream()
+                        .map(i -> {
+                            if (i.availableExpenditure() < 0) {
+																// UserBudgetConsultingService를 의존하고 있는 포인트2! - 함수 apply
+                                Long minimumAvailableExpenditure = getMinimumAvailableExpenditure.apply(i.name());
+                                return UserBudgetCategoryAndAvailableExpenditureRecommendation.toMinimumRecommendation(i, minimumAvailableExpenditure);
+                            }
+                            return UserBudgetCategoryAndAvailableExpenditureRecommendation.toRecommendation(i);
+                        })
+                        .toList();
+		...................
+    }
+````
+</div>
+</details>
+
+5. 결과
+- 위 방법을 ExpenditureService, UserBudgetService에 적용시켜 `리팩토링`을 진행했습니다.
+![refactor-function](https://github.com/soonhankwon/gold-digger-api/assets/113872320/40bd9f9f-7052-4124-a542-e00b5bd5a6d5)
+- 이전에 비해 불필요한 `서비스 Bean간 의존성을 개선`시켰습니다.
+- 리팩토링 진행을 하면서 분산락 적용과 기존 TransactionService를 전보다 깔끔하게 정리가 부수적으로 가능해졌습니다.
+<details>
+<summary><strong> Before 분산락 적용 코드와 After CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+// Before
+public String createExpenditure(String username, Long categoryId, ExpenditureRequest request) {
+        redissonLockContext.executeLock(username, () ->
+                // 락을 점유한 스레드만 트랜잭션 적용
+                transactionService.executeAsTransactional(() -> {
+                    User user = userRepository.findUserByUsername(username)
+                            .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
+
+                    ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
+                            .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
+
+                    Expenditure expenditure = new Expenditure(user, category, request);
+                    expenditureRepository.save(expenditure);
+                    return null;
+                }));
+        return "created";
+    }
+
+// After
+public class ExpenditureServiceHandler {
+
+    private final BudgetConsultingService budgetConsultingService;
+    private final ExpenditureService expenditureService;
+    private final RedissonLockContext redissonLockContext;
+
+    public ExpenditureServiceHandler(final BudgetConsultingService budgetConsultingService,
+                                     final ExpenditureService expenditureService,
+                                     final RedissonLockContext redissonLockContext) {
+        this.budgetConsultingService = budgetConsultingService;
+        this.expenditureService = expenditureService;
+        this.redissonLockContext = redissonLockContext;
+    }
+
+    public String createExpenditure(String username, Long categoryId, ExpenditureRequest request) {
+        // 락을 Handler에서 책임지도록 수정 - 락을 점유한 스레드만 지출서비스의 지출생성을 실행한다.
+        redissonLockContext.executeLock(username,
+                () -> expenditureService.createExpenditure(username, categoryId, request));
+        return "created";
+    }
+...........
+
+// ExpenditureService의 지출생성 메서드
+    // 외부 클래스로 분리되었음으로 @Transactional 적용이 가능해져 Transaction 적용서비스 및 코드 삭제
+		@Transactional
+    public void createExpenditure(String username, Long categoryId, ExpenditureRequest request) {
+        User user = userRepository.findUserByUsername(username)
+                .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
+
+        ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
+                .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
+
+        Expenditure expenditure = new Expenditure(user, category, request);
+        expenditureRepository.save(expenditure);
+    }
+````
+</div>
+</details>
+      
 ### 동시성 제어 이슈
 ---
 1. 지출, 유저예산 `업데이트`시 동시성 제어를 위해 `낙관적락` 적용
