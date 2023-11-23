@@ -34,7 +34,7 @@ public class ExpenditureController {
                                                     @Parameter(description = "지출의 카테고리 ID", required = true)
                                                     @PathVariable Long categoryId,
                                                     @Validated @RequestBody ExpenditureRequest request) {
-        String res = expenditureService.createExpenditure(userPrincipal.getUsername(), categoryId, request);
+        String res = expenditureServiceHandler.createExpenditure(userPrincipal.getUsername(), categoryId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
@@ -87,8 +87,8 @@ public class ExpenditureController {
         return ResponseEntity.ok().body(res);
     }
 
-    @Operation(summary = "오늘 지출 추천 API v1")
-    @GetMapping("/v1/today/recommend")
+    @Operation(summary = "오늘 지출 추천 API")
+    @GetMapping("/today/recommend")
     public ResponseEntity<ExpenditureByTodayRecommendationResponse> getExpenditureRecommendationByTodayV1(@AuthenticationPrincipal UserPrincipal userPrincipal) {
         ExpenditureByTodayRecommendationResponse res = expenditureServiceHandler.getExpenditureRecommendationByToday(userPrincipal.getUsername());
         return ResponseEntity.ok().body(res);
