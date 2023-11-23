@@ -927,8 +927,8 @@ public class ExpenditureService {
 		        Long realAvailableExpenditure = availableUserBudgetByCategoryByToday.stream()
 		                .mapToLong(UserBudgetCategoryAndAvailableExpenditure::availableExpenditure).sum();
 		        
-						// 예산 컨설팅 서비스에서 실제 예산 대비 지출액으로 구체적인 분석 담당
-						// UserBudgetConsultingService를 의존하고 있는 포인트1!
+			// 예산 컨설팅 서비스에서 실제 예산 대비 지출액으로 구체적인 분석 담당
+			// UserBudgetConsultingService를 의존하고 있는 포인트1!
 		        String message = budgetConsultingService.analyzeBudgetStatus(realAvailableExpenditure);
 		
 		        // 지속적인 소비 습관을 생성하기 위한 서비스이므로 예산을 초과하더라도 적정한 금액을 추천
@@ -936,7 +936,7 @@ public class ExpenditureService {
 		                availableUserBudgetByCategoryByToday.stream()
 		                        .map(i -> {
 		                            if (i.availableExpenditure() < 0) {
-																		// UserBudgetConsultingService를 의존하고 있는 포인트2!
+						// UserBudgetConsultingService를 의존하고 있는 포인트2!
 		                                Long minimumAvailableExpenditure = budgetConsultingService.getMinimumAvailableExpenditure(i);
 		                                return UserBudgetCategoryAndAvailableExpenditureRecommendation.toMinimumRecommendation(i, minimumAvailableExpenditure);
 		                            }
@@ -973,9 +973,9 @@ public class ExpenditureServiceHandler {
     public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByToday(String username) {
         return expenditureService.getExpenditureRecommendationByToday(
                 username,
-								// 함수를 파라미터로 넘긴다.
+		// 함수를 파라미터로 넘긴다.
                 budgetConsultingService::analyzeBudgetStatus,
-								// 함수를 파라미터로 넘긴다.
+		// 함수를 파라미터로 넘긴다.
                 budgetConsultingService::getMinimumAvailableExpenditure
         );
     }
@@ -990,7 +990,7 @@ public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByTo
         Long realAvailableExpenditure = availableUserBudgetByCategoryByToday.stream()
                 .mapToLong(UserBudgetCategoryAndAvailableExpenditure::availableExpenditure).sum();
         // 예산 컨설팅 서비스에서 실제 예산 대비 지출액으로 구체적인 분석 담당
-				// UserBudgetConsultingService를 의존하고 있는 포인트1! - 함수 apply
+	// UserBudgetConsultingService를 의존하고 있는 포인트1! - 함수 apply
         String message = analyzeBudgetStatus.apply(realAvailableExpenditure);
 
         // 지속적인 소비 습관을 생성하기 위한 서비스이므로 예산을 초과하더라도 적정한 금액을 추천
@@ -998,7 +998,7 @@ public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByTo
                 availableUserBudgetByCategoryByToday.stream()
                         .map(i -> {
                             if (i.availableExpenditure() < 0) {
-																// UserBudgetConsultingService를 의존하고 있는 포인트2! - 함수 apply
+				// UserBudgetConsultingService를 의존하고 있는 포인트2! - 함수 apply
                                 Long minimumAvailableExpenditure = getMinimumAvailableExpenditure.apply(i.name());
                                 return UserBudgetCategoryAndAvailableExpenditureRecommendation.toMinimumRecommendation(i, minimumAvailableExpenditure);
                             }
