@@ -5,6 +5,7 @@ import dev.golddiggerapi.user.controller.dto.UserBudgetCreateRequest;
 import dev.golddiggerapi.user.controller.dto.UserBudgetRecommendation;
 import dev.golddiggerapi.user.controller.dto.UserBudgetUpdateRequest;
 import dev.golddiggerapi.user.service.UserBudgetService;
+import dev.golddiggerapi.user.service.UserBudgetServiceHandler;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,6 +25,7 @@ import java.util.List;
 public class UserBudgetController {
 
     private final UserBudgetService userBudgetService;
+    private final UserBudgetServiceHandler userBudgetServiceHandler;
 
     @Operation(summary = "유저예산 설정 API")
     @PostMapping
@@ -31,7 +33,7 @@ public class UserBudgetController {
                                                    @Parameter(description = "설정예산의 카테고리 ID", required = true)
                                                    @RequestParam(value = "categoryId") Long categoryId,
                                                    @Validated @RequestBody UserBudgetCreateRequest request) {
-        String res = userBudgetService.createUserBudget(userPrincipal.getUsername(), categoryId, request);
+        String res = userBudgetServiceHandler.createUserBudget(userPrincipal.getUsername(), categoryId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 
@@ -56,7 +58,7 @@ public class UserBudgetController {
     @PostMapping("/recommend")
     public ResponseEntity<String> createUserBudgetByRecommendation(@AuthenticationPrincipal UserPrincipal userPrincipal,
                                                                    @RequestBody List<UserBudgetRecommendation> request) {
-        String res = userBudgetService.createUserBudgetByRecommendation(userPrincipal.getUsername(), request);
+        String res = userBudgetServiceHandler.createUserBudgetByRecommendation(userPrincipal.getUsername(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(res);
     }
 }
