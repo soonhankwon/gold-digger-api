@@ -1,5 +1,7 @@
 package dev.golddiggerapi.expenditure.domain;
 
+import dev.golddiggerapi.exception.CustomErrorCode;
+import dev.golddiggerapi.exception.detail.ApiException;
 import dev.golddiggerapi.expenditure.controller.dto.ExpenditureRequest;
 import dev.golddiggerapi.expenditure.controller.dto.ExpenditureUpdateRequest;
 import dev.golddiggerapi.user.domain.User;
@@ -8,6 +10,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.Month;
 import java.time.format.DateTimeFormatter;
 
 @NoArgsConstructor
@@ -56,11 +59,23 @@ public class Expenditure {
         this.memo = request.memo();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:00");
         this.expenditureDateTime = LocalDateTime.parse(request.dateTime(), formatter);
+        validateExpenditureDateTime(expenditureDateTime);
         this.expenditureStatus = ExpenditureStatus.INCLUDED;
         this.user = user;
         this.expenditureCategory = category;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+    }
+
+    private void validateExpenditureDateTime(LocalDateTime time) {
+        LocalDateTime max = LocalDateTime.of(2050, Month.JANUARY, 1, 0, 0);
+        LocalDateTime min = LocalDateTime.of(2023, Month.JANUARY, 2, 0, 0);
+        if(time.isAfter(max)) {
+            throw new ApiException(CustomErrorCode.INVALID_PARAMETER_DATE_NONE_SERVICE_DAY);
+        }
+        if(time.isBefore(min)) {
+            throw new ApiException(CustomErrorCode.INVALID_PARAMETER_DATE_NONE_SERVICE_DAY);
+        }
     }
 
     public void update(ExpenditureUpdateRequest request, ExpenditureCategory category) {
