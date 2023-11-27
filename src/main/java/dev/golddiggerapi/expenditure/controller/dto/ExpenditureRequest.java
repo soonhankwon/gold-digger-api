@@ -8,8 +8,8 @@ import jakarta.validation.constraints.Size;
 
 @Schema(description = "지출 요청 DTO")
 public record ExpenditureRequest(
-        //'yyyy-MM-dd HH:00' 형식 1차 validation -> ssss-wm-ei 2m:00 으로
-        @Schema(description = "지출 일시", example = "2023-11-14 19:30")
+        //'yyyy-MM-dd HH:00' 형식 1차 validation
+        @Schema(description = "지출 일시", example = "2023-11-14 19:00")
         @Pattern(regexp = "\\d{4}-\\d{2}-\\d{2}\\s\\d{2}:00", message = "yyyy-MM-dd HH:00 형식이어야 합니다.")
         String dateTime,
 

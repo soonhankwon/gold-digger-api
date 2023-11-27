@@ -1,5 +1,6 @@
 package dev.golddiggerapi.expenditure.domain;
 
+import dev.golddiggerapi.exception.detail.ApiException;
 import dev.golddiggerapi.expenditure.controller.dto.ExpenditureRequest;
 import dev.golddiggerapi.expenditure.controller.dto.ExpenditureUpdateRequest;
 import dev.golddiggerapi.user.controller.dto.UserSignupRequest;
@@ -12,6 +13,7 @@ import java.time.Month;
 import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ExpenditureTest {
 
@@ -29,6 +31,20 @@ class ExpenditureTest {
         category = new ExpenditureCategory(1L, "식비");
 
         expenditure = new Expenditure(user, category, request);
+    }
+
+    @Test
+    void create_expenditure_before_service_day_throw_exception() {
+        ExpenditureRequest request = new ExpenditureRequest("2023-01-01 23:00", 10_000L, "점심");
+        assertThatThrownBy(() -> new Expenditure(user, category, request))
+                .isInstanceOf(ApiException.class);
+    }
+
+    @Test
+    void create_expenditure_after_service_day_throw_exception() {
+        ExpenditureRequest request = new ExpenditureRequest("2050-01-01 01:00", 10_000L, "점심");
+        assertThatThrownBy(() -> new Expenditure(user, category, request))
+                .isInstanceOf(ApiException.class);
     }
 
     @Test
