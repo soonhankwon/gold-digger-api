@@ -8,7 +8,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Getter
 @Entity
-@Table(name = "expenditure_category")
+@Table(name = "expenditure_category", indexes = {
+        @Index(name = "idx_name_idx", columnList = "name")
+})
 public class ExpenditureCategory {
 
     @Id
@@ -19,8 +21,14 @@ public class ExpenditureCategory {
     @Schema(description = "카테고리 이름", example = "식비")
     private String name;
 
+    private Integer minimumExpenditurePerDay;
+
     public ExpenditureCategory(Long id, String name) {
         this.id = id;
         this.name = name;
+    }
+
+    public void updateMinimumExpenditurePerDay(int expenditureAvgPerDay) {
+        this.minimumExpenditurePerDay = Math.toIntExact(Math.round(expenditureAvgPerDay / 100.0) * 100);
     }
 }
