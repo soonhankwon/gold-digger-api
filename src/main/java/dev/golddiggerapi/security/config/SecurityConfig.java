@@ -21,15 +21,20 @@ public class SecurityConfig {
     private final CustomAuthenticationEntryPointHandler customAuthenticationEntryPointHandler;
     private final CustomStatusLogoutSuccessHandler customStatusLogoutSuccessHandler;
 
+    private static final String[] AUTH_WHITELIST = {
+            "/v3/**",
+            "/swagger-ui/**",
+            "/api/users/signup",
+            "/api/auth/reissue"
+    };
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.apply(jwtFilterDsl);
 
         return http
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/users/signup").permitAll()
-                        .requestMatchers("/api/auth/reissue").permitAll()
-                        .requestMatchers("/v3/**", "/swagger-ui/**").permitAll()
+                        .requestMatchers(AUTH_WHITELIST).permitAll()
                         .anyRequest().authenticated()
                 )
                 .headers(header -> header
