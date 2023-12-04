@@ -1,9 +1,9 @@
 name: Spring Boot & Gradle & Docker & AWS CD
 
-on:
-  push:
-    branches:
-      - master
+#on:
+#  push:
+#    branches:
+#      - master
 #   pull_request:
 #     branches:
 #       - master
