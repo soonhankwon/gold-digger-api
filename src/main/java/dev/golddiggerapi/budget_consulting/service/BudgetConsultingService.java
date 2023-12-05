@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class BudgetConsultingService {
 
-    //TODO 고도화 필요
+    //TODO 고도화 필요: 사용자의 실제 사용가능한 전체 예산 지출액을 기반으로 메세지를 리턴 (데이터 기반으로 고도화 가능)
     public String analyzeBudgetStatus(Long realAvailableExpenditure) {
         if (isRealAvailableExpenditureUnderZero(realAvailableExpenditure)) {
             return "예산이 초과한 상태입니다. 쫌더 아껴서 쓰세요! 화이팅";
