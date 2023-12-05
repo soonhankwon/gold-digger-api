@@ -31,16 +31,14 @@ public class ExpenditureServiceHandler {
     @Scheduled(cron = "0 0 8 * * *")
     public void sendExpenditureRecommendationByToday() {
         expenditureService.sendExpenditureRecommendationByToday(
-                budgetConsultingService::analyzeBudgetStatus,
-                budgetConsultingService::getMinimumAvailableExpenditure
+                budgetConsultingService::analyzeBudgetStatus
         );
     }
 
     public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByToday(String username) {
         return expenditureService.getExpenditureRecommendationByToday(
                 username,
-                budgetConsultingService::analyzeBudgetStatus,
-                budgetConsultingService::getMinimumAvailableExpenditure
+                budgetConsultingService::analyzeBudgetStatus
         );
     }
 }

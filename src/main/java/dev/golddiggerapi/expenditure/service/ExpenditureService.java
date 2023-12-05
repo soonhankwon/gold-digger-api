@@ -132,18 +132,16 @@ public class ExpenditureService {
         return "excluded";
     }
 
-    public void sendExpenditureRecommendationByToday(Function<Long, String> analyzeBudgetStatus,
-                                                     Function<String, Long> getMinimumAvailableExpenditure) {
+    public void sendExpenditureRecommendationByToday(Function<Long, String> analyzeBudgetStatus) {
         List<User> usersBySubscribeNotification = userRepository.findAllBySubscribeNotificationAndDiscordUrlNot(Boolean.TRUE, "NONE");
         usersBySubscribeNotification.forEach(i -> {
-            ExpenditureByTodayRecommendationResponse expenditureRecommendationByToday = getExpenditureRecommendationByToday(i.getUsername(), analyzeBudgetStatus, getMinimumAvailableExpenditure);
+            ExpenditureByTodayRecommendationResponse expenditureRecommendationByToday = getExpenditureRecommendationByToday(i.getUsername(), analyzeBudgetStatus);
             applicationEventPublisher.publishEvent(new ExpenditureRecommendationEvent(expenditureRecommendationByToday, i.getDiscordUrl()));
         });
     }
 
     public ExpenditureByTodayRecommendationResponse getExpenditureRecommendationByToday(String username,
-                                                                                        Function<Long, String> analyzeBudgetStatus,
-                                                                                        Function<String, Long> getMinimumAvailableExpenditure) {
+                                                                                        Function<Long, String> analyzeBudgetStatus) {
         User user = userRepository.findUserByUsername(username)
                 .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
 
@@ -160,8 +158,10 @@ public class ExpenditureService {
         List<UserBudgetCategoryAndAvailableExpenditureRecommendation> res =
                 availableUserBudgetByCategoryByToday.stream()
                         .map(i -> {
-                            if (i.availableExpenditure() < 0) {
-                                Long minimumAvailableExpenditure = getMinimumAvailableExpenditure.apply(i.name());
+                            if (isAvailableExpenditureUnderZero(i)) {
+                                ExpenditureCategory expenditureCategory = expenditureCategoryRepository.findById(i.categoryId())
+                                        .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
+                                Long minimumAvailableExpenditure = expenditureCategory.getMinimumAvailableExpenditure();
                                 return UserBudgetCategoryAndAvailableExpenditureRecommendation.toMinimumRecommendation(i, minimumAvailableExpenditure);
                             }
                             return UserBudgetCategoryAndAvailableExpenditureRecommendation.toRecommendation(i);
@@ -177,6 +177,10 @@ public class ExpenditureService {
                 message,
                 res
         );
+    }
+
+    private boolean isAvailableExpenditureUnderZero(UserBudgetCategoryAndAvailableExpenditure availableExpenditure) {
+        return availableExpenditure.availableExpenditure() < 0;
     }
 
     @Scheduled(cron = "0 0 20 * * *")
