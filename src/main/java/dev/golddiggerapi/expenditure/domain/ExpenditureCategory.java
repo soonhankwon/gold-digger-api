@@ -28,6 +28,10 @@ public class ExpenditureCategory {
         this.name = name;
     }
 
+    public Long getMinimumAvailableExpenditure() {
+        return Long.valueOf(this.minimumExpenditurePerDay);
+    }
+
     public void updateMinimumExpenditurePerDay(int expenditureAvgPerDay) {
         this.minimumExpenditurePerDay = Math.toIntExact(Math.round(expenditureAvgPerDay / 100.0) * 100);
     }
