@@ -46,6 +46,7 @@
 - Spring Security 6.1.5
 - JJWT 0.12.3
 - Swagger v3 2.2.9
+- Bucket4j Redis 8.7.0
 ### 데이터베이스
 - MySQL 8.0.33
 - Redis 7.0.8
@@ -894,6 +895,94 @@ public ExpenditureStatisticsResponse getExpenditureStatistics(String username) {
 </details>
 
 ## 핵심문제 해결과정 및 전략
+### 사용자의 1초안의 더블클릭(따닥) & 악의적 DDOS 공격 방어
+---
+1. 지출, 유저예산, 추천 유저예산 `생성 및 업데이트`시 비의도적 더블클릭 또는 `악의적 DDOS 공격`에 `방어`가 되지 않는것을 테스트를 통해 발견했습니다.
+- 문제1: 기존에 적용시켜놓은 Redisson 분산락의 `waitTime: 0`이 의도한대로 작동하지 않음
+- 문제2: 클라이언트에서 해당 이슈를 방지할 수 있겠지만, 서버에서 근본적인 방어책이 필요함
+2. 토큰 버킷 알고리즘을 활용한 `API 처리율 제한 기능` 도입
+- 후보1: 처리율 제한 알고리즘에는 여러 알고리즘이 있지만, 다른 알고리즘은 API 처리율 제한의 효율성에 주로 초점이 맞춰져서 강화된 알고리즘
+3. 토큰 버킷 알고리즘이 정확하게 구현되어 있는 `Bucket4j` 라이브러리 선택
+- 이유1: 분산환경에 적합하게 `Bucket4j-Redis`를 활용할 수 있다.
+- 이유2: 심플한 알고리즘 & 레퍼런스가 잘되있고 코드가 심플해 이번 경우와 같이 `단순한 다중요청 방어에 적용`이 용이함.  
+4. 토큰 버킷 알고리즘을 활용하여 `사용자별`로 1초안에 1번이상의 요청를 하지못하도록 애플리케이션 레이어에서 방어
+- 알고리즘 정책: Refill Token 1초, 사용자 별 버킷 토큰 1개
+- 플로우1: 사용자 요청 -> 자체 캐싱에서 버킷확인 -> 없다면 Redis에서 확인 없다면 버킷생성 & 캐싱 -> 내부 캐싱 -> 버킷리턴 및 처리율 제한 적용
+- 플로우2: 시용자 요청 -> 자체 캐싱에서 버킷확인 -> 있다면 버킷리턴 및 처리율 제한 적용
+- 레디스에 이중으로 캐싱하는 이유는 `다중 인스턴스`를 고려한 환경때문입니다. 자체 인스턴스 캐싱은 ConcurrentMap을 활용했습니다.
+5. 애노테이션과 AOP를 활용한 가독성 및 사용성 향상
+- @RateLimit `애노테이션 & Aspect`에 전략을 구현하여 메서드 레벨에서 애노테이션을 활용하여 간단하게 처리율 제한 기능을 사용하도록 개선
+
+<details>
+<summary><strong> ApiRateLimiter CODE - Click! </strong></summary>
+<div markdown="1">       
+
+````java
+    @Slf4j
+@Component
+public class ApiRateLimiter {
+
+    private final LettuceBasedProxyManager<String> proxyManager;
+    private final ConcurrentHashMap<String, Bucket> cache = new ConcurrentHashMap<>();
+
+    public ApiRateLimiter(RedisClient redisClient) {
+        // Redis 연결을 생성
+        StatefulRedisConnection<String, byte[]> connection = redisClient.connect(RedisCodec.of(StringCodec.UTF8, ByteArrayCodec.INSTANCE));
+        // Redis 연결을 이용해 LettuceBasedProxyManager 객체 생성
+        this.proxyManager = LettuceBasedProxyManager.builderFor(connection)
+                .withExpirationStrategy(ExpirationAfterWriteStrategy.basedOnTimeForRefillingBucketUpToMax(Duration.ofSeconds(100)))
+                .build();
+    }
+
+    /**
+     * API 키에 해당하는 버킷을 가져오거나, 없을 경우 새로 생성
+     *
+     * @param apiKey API Key
+     * @return API Key : Bucket
+     */
+    private Bucket getOrCreateBucket(String apiKey) {
+        return cache.computeIfAbsent(apiKey, key -> {
+            // 버킷 ID와 버킷 설정을 이용해 버킷을 생성하고, 이를 반환
+            return proxyManager.builder().build(key, this::createBucketConfiguration);
+        });
+    }
+
+    /**
+     * 버킷 설정을 생성하는 메서드
+     * @return 생성된 버킷 설정
+     */
+    private BucketConfiguration createBucketConfiguration() {
+        return BucketConfiguration.builder()
+                .addLimit(Bandwidth.builder().capacity(1)
+                        .refillIntervally(1, Duration.ofSeconds(1)).build())
+                .build();
+    }
+
+    /**
+     * API 키에 해당하는 버킷에서 토큰을 소비하려고 시도하는 메서드
+     * @param apiKey API 키
+     * @return 토큰 소비 성공 여부
+     */
+    public boolean tryConsume(String apiKey) {
+        // API 키에 해당하는 버킷을 가져옴
+        Bucket bucket = getOrCreateBucket(apiKey);
+        // 버킷에서 토큰을 소비하려고 시도하고, 그 결과를 반환
+        boolean consumed = bucket.tryConsume(1);
+        log.info("API Key: {}, Consumed: {}, Time: {}", apiKey, consumed, LocalDateTime.now());
+        return consumed;
+    }
+}
+````
+````java
+    @RateLimit
+    public String createExpenditure(String username, Long categoryId, ExpenditureRequest request) {
+        expenditureService.createExpenditure(username, categoryId, request);
+        return "created";
+    }
+````
+</div>
+</details>
+    
 ### 서비스 빈들간 의존성 & 결합도 이슈
 ---
 1. 요구사항을 구현하고 보니 서비스 Bean에서 다른 서비스 Bean을 의존하고 있는 `의존성 & 결합도` 문제를 인식했습니다.
@@ -1087,85 +1176,7 @@ public class ExpenditureServiceHandler {
 1. 지출, 유저예산 `업데이트`시 동시성 제어를 위해 `낙관적락` 적용
 - 지출, 유저예산 업데이트시 동일 데이터에 같은 사용자가 동시에 접근하는 동시성 이슈가 발생했습니다.
 - 비관적락은 성능에 이슈가 있고, 해당 업데이트시 동일 유저가 실수로 접근하는 경우라고 판단하여 낙관적락을 적용했습니다.
-- JPA `@Version`을 적용하여 애플리케이션 단계에서 동시성 이슈를 개선했습니다.   
-2. 지출, 유저예산, 추천 유저예산 `생성`시 동시성 제어를 위해 `분산락` 적용
-- 업데이트의 경우와 달리 생성시에는 낙관적락으로 동시성 제어가 불가능했습니다.
-- 비관적락은 성능에 이슈가 있어 `Redisson`을 활용한 분산락을 적용했습니다.
-- @Transactional은 동일 클래스 내부 메서드 호출에는 적용되지 않기 때문에, 별도의 `TransactionSevice`를 구현하여 내부 메서드에 `트랜잭션`을 적용했습니다.
-- 락을 username로 설정하여 동시에 요청이 들어 왔을 경우에도 한 개의 스레드만 락을 점유하여 요청을 수행하도록 구현했습니다.
-- 분산락 적용 코드가 `템플릿화`되있는 점을 인식(try-catch 블럭) `템플릿 콜백(전략)패턴`을 활용해서 코드를 개선시켰습니다. 
-<details>
-<summary><strong> 분산락 및 내부 메서드 트랜잭션 적용 CODE - Click! </strong></summary>
-<div markdown="1">       
-
-````java
-public String createExpenditure(String username, Long categoryId, ExpenditureRequest request) {
-        redissonLockContext.executeLock(username, () ->
-                // 락을 점유한 스레드만 트랜잭션 적용
-                transactionService.executeAsTransactional(() -> {
-                    User user = userRepository.findUserByUsername(username)
-                            .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
-
-                    ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
-                            .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
-
-                    Expenditure expenditure = new Expenditure(user, category, request);
-                    expenditureRepository.save(expenditure);
-                    return null;
-                }));
-        return "created";
-    }
-
-public String createUserBudget(String username, Long categoryId, UserBudgetCreateRequest request) {
-        redissonLockContext.executeLock(username, () ->
-                // 락을 점유한 스레드만 트랜잭션 적용
-                transactionService.executeAsTransactional(() -> {
-                    User user = userRepository.findUserByUsername(username)
-                            .orElseThrow(() -> new ApiException(CustomErrorCode.USER_NOT_FOUND_DB));
-
-                    ExpenditureCategory category = expenditureCategoryRepository.findById(categoryId)
-                            .orElseThrow(() -> new ApiException(CustomErrorCode.CATEGORY_NOT_FOUND_DB));
-
-                    UserBudget userBudget = new UserBudget(user, category, request);
-                    validateDuplicatedUserBudget(user, userBudget, category);
-                    userBudgetRepository.save(userBudget);
-                    return null;
-                }));
-        return "created";
-    }
-````
-</div>
-</details>
-
-<details>
-<summary><strong> 분산락 전략패턴 CODE - Click! </strong></summary>
-<div markdown="1">       
-
-````java
-@Component
-@RequiredArgsConstructor
-public class RedissonLockContext {
-
-    private final RedissonClient redissonClient;
-
-    public void executeLock(String username, RedissonLockStrategy strategy) {
-        RLock lock = redissonClient.getLock(username);
-        try {
-            // waitTime: 락 대기시간, leaseTime: 해당 시간이 지나면 락 해제
-            boolean available = lock.tryLock(0, 1, TimeUnit.SECONDS);
-            if(!available) {
-                throw new ApiException(CustomErrorCode.CANT_GET_LOCK);
-            }
-            // 전략은 서비스레이어에서 구체적 구현
-            strategy.call();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-    }
-}
-````
-</div>
-</details>
+- JPA `@Version`을 적용하여 애플리케이션 단계에서 동시성 이슈를 개선했습니다.
 
 ### 캐싱전략
 ---
