@@ -24,7 +24,6 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
     private final ObjectMapper objectMapper;
     private final RedisTokenRepository redisTokenRepository;
 
-
     @SneakyThrows
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) {
