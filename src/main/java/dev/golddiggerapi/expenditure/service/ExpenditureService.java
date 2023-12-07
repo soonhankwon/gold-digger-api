@@ -7,6 +7,8 @@ import dev.golddiggerapi.expenditure.domain.Expenditure;
 import dev.golddiggerapi.expenditure.domain.ExpenditureCategory;
 import dev.golddiggerapi.expenditure.repository.ExpenditureCategoryRepository;
 import dev.golddiggerapi.expenditure.repository.ExpenditureRepository;
+import dev.golddiggerapi.global.annotation.RateLimit;
+import dev.golddiggerapi.global.service.ApiRateLimiter;
 import dev.golddiggerapi.notification.event.ExpenditureAnalyzeEvent;
 import dev.golddiggerapi.notification.event.ExpenditureRecommendationEvent;
 import dev.golddiggerapi.user.controller.dto.UserBudgetCategoryAndAvailableExpenditure;
@@ -51,6 +53,7 @@ public class ExpenditureService {
         expenditureRepository.save(expenditure);
     }
 
+    @RateLimit
     @Transactional
     public String updateExpenditure(String username, Long expenditureId, ExpenditureUpdateRequest request) {
         User user = userRepository.findUserByUsername(username)
@@ -120,6 +123,7 @@ public class ExpenditureService {
         return "deleted";
     }
 
+    @RateLimit
     @Transactional
     public String excludeExpenditure(String username, Long expenditureId) {
         User user = userRepository.findUserByUsername(username)

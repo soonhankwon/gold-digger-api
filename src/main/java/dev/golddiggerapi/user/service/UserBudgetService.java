@@ -4,6 +4,7 @@ import dev.golddiggerapi.exception.CustomErrorCode;
 import dev.golddiggerapi.exception.detail.ApiException;
 import dev.golddiggerapi.expenditure.domain.ExpenditureCategory;
 import dev.golddiggerapi.expenditure.repository.ExpenditureCategoryRepository;
+import dev.golddiggerapi.global.annotation.RateLimit;
 import dev.golddiggerapi.user.controller.dto.UserBudgetAvgRatioByCategoryStatisticResponse;
 import dev.golddiggerapi.user.controller.dto.UserBudgetCreateRequest;
 import dev.golddiggerapi.user.controller.dto.UserBudgetRecommendation;
@@ -48,6 +49,7 @@ public class UserBudgetService {
         return userBudgetRepository.existsByUserAndExpenditureCategoryAndPlannedYearMonth(user, category, plannedYearMonth);
     }
 
+    @RateLimit
     @Transactional
     public String updateUserBudget(String username, Long userBudgetId, UserBudgetUpdateRequest request) {
         User user = userRepository.findUserByUsername(username)
