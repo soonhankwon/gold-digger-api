@@ -1,8 +1,6 @@
 package dev.golddiggerapi.config;
 
-import org.redisson.Redisson;
-import org.redisson.api.RedissonClient;
-import org.redisson.config.Config;
+import io.lettuce.core.RedisClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -30,8 +28,6 @@ public class RedisConfig {
     @Value("${spring.data.redis.port}")
     private int port;
 
-    private static final String REDISSON_HOST_PREFIX = "redis://";
-
     @Bean
     public RedisConnectionFactory redisConnectionFactory() {
         RedisStandaloneConfiguration redisConfiguration = new RedisStandaloneConfiguration();
@@ -42,10 +38,17 @@ public class RedisConfig {
     }
 
     @Bean
-    public RedisTemplate<?, ?> redisTemplate() {
-        RedisTemplate<byte[], byte[]> template = new RedisTemplate<>();
+    public RedisTemplate<String, ?> redisTemplate() {
+        RedisTemplate<String, byte[]> template = new RedisTemplate<>();
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setValueSerializer(new StringRedisSerializer());
         template.setConnectionFactory(redisConnectionFactory());
         return template;
+    }
+
+    @Bean
+    public RedisClient redisClient() {
+        return RedisClient.create("redis://" + host + ":" + port);
     }
 
     @Bean
@@ -59,13 +62,5 @@ public class RedisConfig {
                 .fromConnectionFactory(cf)
                 .cacheDefaults(redisCacheConfiguration)
                 .build();
-    }
-
-    @Bean
-    public RedissonClient redissonClient() {
-        Config config = new Config();
-        config.useSingleServer()
-                .setAddress(REDISSON_HOST_PREFIX + host + ":" + port);
-        return Redisson.create(config);
     }
 }
